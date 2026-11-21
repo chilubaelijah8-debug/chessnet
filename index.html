@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101d30">
+<title>Chessnet | Chess Communities</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Arial,sans-serif;
+  background:#0b1422;
+  color:#f5f6fa;
+}
+header{
+  background:#101e32;
+  padding:18px 5%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #263750;
+}
+.logo{
+  font-size:25px;
+  font-weight:800;
+  color:#e6bd65;
+  letter-spacing:1px;
+}
+.logo span{color:white}
+nav{display:flex;gap:22px;align-items:center}
+nav a{
+  color:#b8c4d5;
+  text-decoration:none;
+  font-size:14px;
+}
+nav a:hover{color:#e6bd65}
+.profile{
+  background:#263750;
+  padding:9px 14px;
+  border-radius:20px;
+  color:white;
+}
+main{max-width:1150px;margin:auto;padding:28px 5%}
+.welcome{margin-bottom:25px}
+.welcome h1{font-size:27px;margin-bottom:8px}
+.muted{color:#9baabd;font-size:14px}
+.section-title{
+  font-size:19px;
+  margin:28px 0 15px;
+}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:13px;
+}
+.stat,.panel,.group-card{
+  background:#14243a;
+  border:1px solid #293b53;
+  border-radius:13px;
+  padding:19px;
+}
+.stat strong{
+  display:block;
+  font-size:26px;
+  color:#e6bd65;
+  margin-top:10px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1.4fr 1fr;
+  gap:15px;
+}
+.group-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+.group-card h3{margin-bottom:7px}
+.group-card p{font-size:13px;color:#9baabd}
+.group-icon{
+  width:45px;height:45px;
+  border-radius:12px;
+  background:#283b55;
+  display:grid;place-items:center;
+  font-size:23px;
+  flex-shrink:0;
+}
+.btn{
+  background:#d7ad59;
+  color:#101d30;
+  border:0;
+  padding:11px 17px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.btn:hover{background:#f0ce82}
+.btn-outline{
+  background:transparent;
+  border:1px solid #d7ad59;
+  color:#e6bd65;
+}
+.online{color:#64d99b;font-size:13px}
+.player{
+  display:flex;
+  justify-content:space-between;
+  padding:13px 0;
+  border-bottom:1px solid #293b53;
+  font-size:14px;
+}
+.player:last-child{border:0}
+.tag{
+  color:#e6bd65;
+  font-size:12px;
+}
+footer{
+  border-top:1px solid #293b53;
+  padding:25px;
+  text-align:center;
+  color:#8291a5;
+  font-size:13px;
+  margin-top:35px;
+}
+@media(max-width:700px){
+  nav{display:none}
+  .grid{grid-template-columns:1fr}
+  .stats{gap:8px}
+  .stat{padding:12px}
+  .stat strong{font-size:21px}
+  main{padding:23px 4%}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">CHESS<span>NET</span> ♟</div>
+  <nav>
+    <a href="#home">Home</a>
+    <a href="#groups">Groups</a>
+    <a href="#tournaments">Tournaments</a>
+    <a href="#rankings">Rankings</a>
+  </nav>
+  <div class="profile">My Profile</div>
+</header>
+
+<main id="home">
+
+  <section class="welcome">
+    <h1>Welcome to Chessnet ♟</h1>
+    <p class="muted">
+      Your chess community. Your competition. Your rankings.
+    </p>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="muted">My Groups</span>
+      <strong>0</strong>
+    </div>
+    <div class="stat">
+      <span class="muted">Online Players</span>
+      <strong>0</strong>
+    </div>
+    <div class="stat">
+      <span class="muted">Tournaments</span>
+      <strong>0</strong>
+    </div>
+  </section>
+
+  <div class="grid">
+
+    <section id="groups">
+      <h2 class="section-title">My Communities</h2>
+
+      <div class="group-card">
+        <div class="group-icon">♞</div>
+        <div style="flex:1">
+          <h3>Join a Chess Group</h3>
+          <p>Connect with your chess community.</p>
+        </div>
+        <button class="btn" onclick="alert('Group creation coming soon!')">
+          Explore
+        </button>
+      </div>
+
+      <div class="group-card">
+        <div class="group-icon">＋</div>
+        <div style="flex:1">
+          <h3>Create a Group</h3>
+          <p>Start your own chess community.</p>
+        </div>
+        <button class="btn btn-outline"
+          onclick="alert('Group creation coming soon!')">
+          Create
+        </button>
+      </div>
+
+      <h2 class="section-title">Quick Match</h2>
+      <div class="panel">
+        <h3>Find an opponent</h3>
+        <p class="muted" style="margin:10px 0 17px">
+          Get paired with an available member of your group.
+        </p>
+        <button class="btn" onclick="alert('Matchmaking will be connected soon!')">
+          ♟ Find Opponent
+        </button>
+      </div>
+
+      <h2 class="section-title" id="tournaments">
+        Group Tournaments
+      </h2>
+      <div class="panel">
+        <h3>Your next competition starts here.</h3>
+        <p class="muted" style="margin:10px 0">
+          Round Robin, Swiss and Knockout tournaments.
+        </p>
+        <button class="btn btn-outline"
+          onclick="alert('Tournament creation coming soon!')">
+          View Tournaments
+        </button>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Chess Accounts</h2>
+
+      <div class="panel">
+        <h3>Chess.com</h3>
+        <p class="muted" style="margin:9px 0">
+          Connect your Chess.com profile and club.
+        </p>
+        <button class="btn btn-outline"
+          onclick="alert('Chess.com connection coming soon!')">
+          Connect Account
+        </button>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h3>Lichess</h3>
+        <p class="muted" style="margin:9px 0">
+          Connect your Lichess profile and teams.
+        </p>
+        <button class="btn btn-outline"
+          onclick="alert('Lichess connection coming soon!')">
+          Connect Account
+        </button>
+      </div>
+
+      <h2 class="section-title" id="rankings">
+        Group Rankings
+      </h2>
+      <div class="panel">
+        <p class="muted">
+          Your group leaderboard will appear here.
+        </p>
+        <p style="margin-top:15px;color:#e6bd65">
+          ♔ Rankings coming soon
+        </p>
+      </div>
+
+      <h2 class="section-title">Live Activity</h2>
+      <div class="panel">
+        <p class="muted">
+          Group games and player activity will appear here.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+</main>
+
+<footer>
+  CHESSNET ♟<br><br>
+  Connecting chess communities worldwide.
+</footer>
+
+</body>
+</html>
