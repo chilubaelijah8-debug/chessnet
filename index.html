@@ -210,12 +210,48 @@ main{padding:23px 4%}
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   window.chessnetSupabase = client;
 
+  // LOAD SAVED CHESS ACCOUNT CONNECTIONS
+  async function loadConnectedAccounts(userId) {
+    const { data, error } = await client
+      .from("connected_chess_accounts")
+      .select("provider, username, verified")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Could not load connected accounts:", error.message);
+      return;
+    }
+
+    const chesscom = data.find(a => a.provider === "chess.com");
+    const lichess = data.find(a => a.provider === "lichess");
+
+    const chesscomButton = document.getElementById("connect-chesscom");
+
+    if (chesscom) {
+      document.getElementById("chesscom-message").textContent =
+        "Connected: " + chesscom.username +
+        (chesscom.verified ? " · Verified" : " · Ownership unverified");
+      chesscomButton.textContent = "Reconnect Chess.com";
+    }
+
+    if (lichess) {
+      lichessMessage.textContent =
+        "Connected and " + (lichess.verified ? "verified: " : "unverified: ") +
+        lichess.username;
+      lichessButton.textContent = "Reconnect Lichess";
+    } else {
+      lichessMessage.textContent = "No Lichess account connected yet.";
+      lichessButton.textContent = "Connect to Lichess";
+    }
+  }
+
   // Show the correct screen
   function updateAuthUI(session) {
     if (session && session.user) {
       accountSection.style.display = "none";
       dashboard.style.display = "block";
       loggedInEmail.textContent = session.user.email || "";
+      loadConnectedAccounts(session.user.id);
     } else {
       accountSection.style.display = "block";
       dashboard.style.display = "none";
