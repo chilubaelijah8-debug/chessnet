@@ -381,40 +381,7 @@ footer{
 
     message.textContent = "Welcome back to Chessnet!";
   });
-  // UPDATE LOGIN DISPLAY
-  async function updateAuthUI(session) {
-    const accountSection = document.getElementById("account-section");
-    const dashboard = document.getElementById("user-dashboard");
-    const loggedInEmail = document.getElementById("logged-in-email");
-
-    if (session) {
-      accountSection.style.display = "none";
-      dashboard.style.display = "block";
-      loggedInEmail.textContent = session.user.email;
-    } else {
-      accountSection.style.display = "block";
-      dashboard.style.display = "none";
-    }
-  }
-
-  // CHECK EXISTING LOGIN
-  window.chessnetSupabase.auth.getSession().then(({ data }) => {
-    updateAuthUI(data.session);
-  });
-
-  // WATCH LOGIN AND LOGOUT
-  window.chessnetSupabase.auth.onAuthStateChange((event, session) => {
-    updateAuthUI(session);
-  });
-
-  // LOG OUT
-  document.getElementById("logout-button").addEventListener("click", async () => {
-    const { error } = await window.chessnetSupabase.auth.signOut();
-
-    if (error) {
-      alert(error.message);
-    }
-  });
+  
   console.log("Chessnet connected to Supabase!");
 </script>
 
