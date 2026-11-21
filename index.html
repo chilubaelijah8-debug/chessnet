@@ -281,5 +281,23 @@ footer{
   Connecting chess communities worldwide.
 </footer>
 
+<!-- CHESSNET SUPABASE CONNECTION -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  const CHESSNET_SUPABASE_URL =
+    "https://hezjsdywyzgxbavavlyh.supabase.co";
+
+  const CHESSNET_SUPABASE_KEY =
+    "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
+
+  window.chessnetSupabase = window.supabase.createClient(
+    CHESSNET_SUPABASE_URL,
+    CHESSNET_SUPABASE_KEY
+  );
+
+  console.log("Chessnet connected to Supabase!");
+</script>
+
 </body>
 </html>
