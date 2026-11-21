@@ -364,6 +364,144 @@ main{padding:23px 4%}
     }
   });
 
+  // LICHESS OFFICIAL ACCOUNT CONNECTION (OAuth 2.0 + PKCE)
+
+  const lichessButton = document.getElementById("connect-lichess");
+  const lichessMessage = document.getElementById("lichess-message");
+
+  const lichessClientId = window.location.hostname;
+  const lichessRedirect = window.location.origin + window.location.pathname;
+
+  function base64Url(bytes) {
+    return btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
+  }
+
+  async function sha256(value) {
+    const data = new TextEncoder().encode(value);
+    return base64Url(new Uint8Array(
+      await crypto.subtle.digest("SHA-256", data)
+    ));
+  }
+
+  async function startLichessConnection() {
+    const { data, error } = await client.auth.getUser();
+
+    if (error || !data.user) {
+      lichessMessage.textContent = "Please log in to Chessnet first.";
+      return;
+    }
+
+    const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)));
+    const state = base64Url(crypto.getRandomValues(new Uint8Array(24)));
+    const challenge = await sha256(verifier);
+
+    sessionStorage.setItem("lichess_verifier", verifier);
+    sessionStorage.setItem("lichess_state", state);
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: lichessClientId,
+      redirect_uri: lichessRedirect,
+      code_challenge_method: "S256",
+      code_challenge: challenge,
+      state: state
+    });
+
+    window.location.href = "https://lichess.org/oauth?" + params.toString();
+  }
+
+  async function finishLichessConnection() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) return;
+
+    const returnedState = params.get("state");
+    const savedState = sessionStorage.getItem("lichess_state");
+    const verifier = sessionStorage.getItem("lichess_verifier");
+
+    sessionStorage.removeItem("lichess_state");
+    sessionStorage.removeItem("lichess_verifier");
+
+    window.history.replaceState({}, document.title, lichessRedirect);
+
+    if (!returnedState || returnedState !== savedState || !verifier) {
+      lichessMessage.textContent = "Lichess security check failed. Please try again.";
+      return;
+    }
+
+    lichessMessage.textContent = "Verifying your Lichess account...";
+
+    try {
+      const tokenResponse = await fetch("https://lichess.org/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code,
+          code_verifier: verifier,
+          redirect_uri: lichessRedirect,
+          client_id: lichessClientId
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error("Lichess authorization failed. Please try again.");
+      }
+
+      const tokenData = await tokenResponse.json();
+
+      const accountResponse = await fetch("https://lichess.org/api/account", {
+        headers: {
+          "Authorization": "Bearer " + tokenData.access_token
+        }
+      });
+
+      if (!accountResponse.ok) {
+        throw new Error("Could not retrieve your Lichess account.");
+      }
+
+      const lichessAccount = await accountResponse.json();
+
+      const { data: userData, error: userError } =
+        await client.auth.getUser();
+
+      if (userError || !userData.user) {
+        throw new Error("Your Chessnet session has expired. Log in again.");
+      }
+
+      const { error } = await client
+        .from("connected_chess_accounts")
+        .upsert({
+          user_id: userData.user.id,
+          provider: "lichess",
+          username: lichessAccount.username,
+          verified: true
+        }, {
+          onConflict: "user_id,provider"
+        });
+
+      if (error) throw error;
+
+      lichessMessage.textContent =
+        "Lichess account connected and verified: " +
+        lichessAccount.username;
+
+    } catch (error) {
+      lichessMessage.textContent = "Connection failed: " + error.message;
+    }
+  }
+
+  if (lichessButton) {
+    lichessButton.addEventListener("click", startLichessConnection);
+  }
+
+  finishLichessConnection();
+
   console.log("Chessnet connected to Supabase!");
 })();
 </script>
