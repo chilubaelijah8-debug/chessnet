@@ -281,6 +281,31 @@ footer{
   Connecting chess communities worldwide.
 </footer>
 
+<!-- CHESSNET ACCOUNT SECTION -->
+<section id="account-section" style="max-width:420px;margin:30px auto;padding:22px;background:#102b46;color:white;border-radius:14px;">
+  <h2 style="color:#d4af37;text-align:center;">Join Chessnet</h2>
+  <p style="text-align:center;">Create your player account or log in.</p>
+
+  <input id="display-name" type="text" placeholder="Your chess name"
+    style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box;">
+
+  <input id="email" type="email" placeholder="Email address"
+    style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box;">
+
+  <input id="password" type="password" placeholder="Password (minimum 6 characters)"
+    style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box;">
+
+  <button id="signup-button" style="width:100%;padding:12px;margin:8px 0;background:#d4af37;color:#102b46;border:0;border-radius:6px;">
+    Create Account
+  </button>
+
+  <button id="login-button" style="width:100%;padding:12px;margin:8px 0;background:white;color:#102b46;border:0;border-radius:6px;">
+    Log In
+  </button>
+
+  <p id="auth-message" style="text-align:center;"></p>
+</section>
+
 <!-- CHESSNET SUPABASE CONNECTION -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -295,6 +320,69 @@ footer{
     CHESSNET_SUPABASE_URL,
     CHESSNET_SUPABASE_KEY
   );
+
+// CHESSNET REGISTRATION
+document.getElementById("signup-button").addEventListener("click", async () => {
+  const name = document.getElementById("display-name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const message = document.getElementById("auth-message");
+
+  if (!name || !email || !password) {
+    message.textContent = "Please fill in all fields.";
+    return;
+  }
+
+  if (password.length < 6) {
+    message.textContent = "Password must be at least 6 characters.";
+    return;
+  }
+
+  message.textContent = "Creating your account...";
+
+  const { data, error } = await window.chessnetSupabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: name }
+    }
+  });
+
+  if (error) {
+    message.textContent = error.message;
+    return;
+  }
+
+  message.textContent = data.session
+    ? "Account created successfully!"
+    : "Account created! Check your email to confirm your account.";
+});
+
+// CHESSNET LOGIN
+document.getElementById("login-button").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const message = document.getElementById("auth-message");
+
+  if (!email || !password) {
+    message.textContent = "Enter your email and password.";
+    return;
+  }
+
+  message.textContent = "Logging in...";
+
+  const { data, error } = await window.chessnetSupabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    message.textContent = error.message;
+    return;
+  }
+
+  message.textContent = "Welcome back to Chessnet!";
+});
 
   console.log("Chessnet connected to Supabase!");
 </script>
