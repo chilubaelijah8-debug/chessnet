@@ -167,11 +167,55 @@ main{padding:23px 4%}
   <p id="lichess-message" class="muted" style="margin-top:10px"></p>
 </div>
 
+<h2 class="section-title" id="player-profile">
+  My Player Profile
+</h2>
+
+<div class="panel">
+  <div style="display:flex;align-items:center;gap:15px">
+    <div style="width:58px;height:58px;border-radius:50%;
+      background:#283b55;display:grid;place-items:center;
+      font-size:28px;color:#e6bd65">
+      ♟
+    </div>
+
+    <div>
+      <h3 id="profile-name">Chessnet Player</h3>
+      <p class="muted" id="profile-email">Your player account</p>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
+    <p class="muted">Lichess Account</p>
+    <p id="profile-lichess" style="color:#e6bd65;margin-top:6px">
+      Not connected
+    </p>
+  </div>
+
+  <div style="margin-top:18px">
+    <p class="muted">Chessnet Membership</p>
+    <p style="margin-top:6px">Registered Player</p>
+  </div>
+</div>
+
       <h2 class="section-title" id="rankings">Group Rankings</h2>
-      <div class="panel">
-        <p class="muted">Your group leaderboard will appear here.</p>
-        <p style="margin-top:15px;color:#e6bd65">♔ Rankings coming soon</p>
-      </div>
+      
+<div class="panel">
+  <h3 style="margin-bottom:15px">ZED Chess Leaderboard</h3>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px">
+    <button class="btn ranking-tab" data-type="rapid">Rapid</button>
+    <button class="btn btn-outline ranking-tab" data-type="blitz">Blitz</button>
+    <button class="btn btn-outline ranking-tab" data-type="bullet">Bullet</button>
+  </div>
+
+  <p id="ranking-message" class="muted">
+    Rankings will appear after team members are loaded.
+  </p>
+
+  <div id="ranking-list" style="margin-top:15px"></div>
+</div>
+
 
       <h2 class="section-title">Live Activity</h2>
       <div class="panel">
@@ -247,6 +291,19 @@ main{padding:23px 4%}
     const chesscom = data.find(a => a.provider === "chess.com");
     const lichess = data.find(a => a.provider === "lichess");
 
+    // Display connected Lichess account on player profile
+    const profileLichess = document.getElementById("profile-lichess");
+
+    if (profileLichess) {
+      if (lichess) {
+        profileLichess.textContent = lichess.username;
+        profileLichess.style.color = "#58d68d";
+      } else {
+        profileLichess.textContent = "Not connected";
+        profileLichess.style.color = "#9baabd";
+      }
+    }
+
     const chesscomButton = document.getElementById("connect-chesscom");
 
     if (chesscom) {
@@ -273,6 +330,22 @@ main{padding:23px 4%}
       accountSection.style.display = "none";
       dashboard.style.display = "block";
       loggedInEmail.textContent = session.user.email || "";
+      
+      // Update Chessnet player profile
+      const profileName = document.getElementById("profile-name");
+      const profileEmail = document.getElementById("profile-email");
+
+      if (profileName) {
+        profileName.textContent =
+          session.user.user_metadata?.display_name ||
+          session.user.email ||
+          "Chessnet Player";
+      }
+
+      if (profileEmail) {
+        profileEmail.textContent = session.user.email || "";
+      }
+
       loadConnectedAccounts(session.user.id);
     } else {
       accountSection.style.display = "block";
@@ -571,6 +644,76 @@ main{padding:23px 4%}
   const membersList = document.getElementById("lichess-members-list");
   const memberCount = document.getElementById("member-count");
 
+  // CHESSNET LIVE RANKING ENGINE
+
+  let loadedTeamMembers = [];
+  let currentRankingType = "rapid";
+
+  function renderLichessRankings() {
+    const rankingList = document.getElementById("ranking-list");
+    const rankingMessage = document.getElementById("ranking-message");
+
+    if (!rankingList || !rankingMessage) return;
+
+    const rankedPlayers = loadedTeamMembers
+      .map(member => {
+        const performance = member.perfs?.[currentRankingType];
+
+        return {
+          username: member.username || member.id,
+          rating: performance?.rating,
+          games: performance?.games || 0
+        };
+      })
+      .filter(player => Number.isFinite(player.rating))
+      .sort((a, b) => b.rating - a.rating);
+
+    rankingList.innerHTML = "";
+
+    if (rankedPlayers.length === 0) {
+      rankingMessage.textContent =
+        "No " + currentRankingType + " ratings available yet.";
+      return;
+    }
+
+    rankingMessage.textContent =
+      rankedPlayers.length + " players ranked · " +
+      currentRankingType.toUpperCase();
+
+    rankedPlayers.forEach((player, index) => {
+      const row = document.createElement("div");
+
+      row.style.cssText =
+        "display:flex;justify-content:space-between;gap:10px;" +
+        "padding:12px;margin-bottom:7px;background:#203550;" +
+        "border-radius:8px;";
+
+      const name = document.createElement("span");
+      name.textContent = (index + 1) + ". " + player.username;
+
+      const rating = document.createElement("strong");
+      rating.textContent = player.rating + " Elo";
+      rating.style.color = "#e6bd65";
+
+      row.appendChild(name);
+      row.appendChild(rating);
+      rankingList.appendChild(row);
+    });
+  }
+
+  document.querySelectorAll(".ranking-tab").forEach(button => {
+    button.addEventListener("click", () => {
+      currentRankingType = button.dataset.type;
+
+      document.querySelectorAll(".ranking-tab").forEach(tab => {
+        tab.classList.add("btn-outline");
+      });
+
+      button.classList.remove("btn-outline");
+      renderLichessRankings();
+    });
+  });
+
   if (membersButton) {
     membersButton.addEventListener("click", async () => {
       membersButton.disabled = true;
@@ -580,7 +723,7 @@ main{padding:23px 4%}
 
       try {
         const response = await fetch(
-          "https://lichess.org/api/team/zedchess-of-the-elites/users",
+          "https://lichess.org/api/team/zedchess-of-the-elites/users?full=true",
           {
             headers: {
               "Accept": "application/x-ndjson"
@@ -598,6 +741,10 @@ main{padding:23px 4%}
           .split(/\r?\n/)
           .filter(line => line.trim())
           .map(line => JSON.parse(line));
+
+        // Share downloaded players with the ranking engine
+        loadedTeamMembers = members;
+        renderLichessRankings();
 
         if (members.length === 0) {
           memberCount.textContent = "No team members found.";
@@ -705,7 +852,7 @@ main{padding:23px 4%}
         });
 
         membersButton.textContent = "Refresh Members";
-
+        renderLichessRankings();
       } catch (error) {
         memberCount.textContent =
           "Could not load members: " + error.message;
