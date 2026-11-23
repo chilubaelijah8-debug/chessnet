@@ -263,6 +263,76 @@ footer {
   }
 }
 
+/* CHESSNET HOME DASHBOARD */
+
+.home-hero {
+  background: linear-gradient(120deg,#281044,#65158e,#a51c91);
+  border: 1px solid #a832c7;
+  border-radius: 18px;
+  padding: 25px 20px;
+  margin: 20px 0;
+}
+
+.home-hero h1 {
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+.home-hero p {
+  color: #ead8ff;
+  line-height: 1.5;
+}
+
+.home-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 13px;
+  margin: 22px 0;
+}
+
+.home-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 105px;
+  padding: 15px;
+  border-radius: 14px;
+  background: linear-gradient(145deg,#25133d,#35134f);
+  border: 1px solid #69318a;
+  color: white;
+  text-decoration: none;
+}
+
+.home-shortcut .shortcut-icon {
+  font-size: 29px;
+  color: #f044ad;
+}
+
+.home-shortcut strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.home-shortcut small {
+  color: #cbb5ff;
+  line-height: 1.4;
+}
+
+.home-shortcut:active {
+  transform: scale(.98);
+}
+
+@media(max-width:420px) {
+  .home-shortcut {
+    padding: 11px;
+    gap: 8px;
+  }
+
+  .home-shortcut .shortcut-icon {
+    font-size: 23px;
+  }
+}
+
 </style>
 
 </head>
@@ -285,10 +355,49 @@ footer {
 
 <main id="home">
 
-  <section class="welcome">
-    <h1>Welcome to Chessnet ♟</h1>
-    <p class="muted">Your chess community. Your competition. Your rankings.</p>
-  </section>
+  
+<section class="home-hero">
+  <h1>Welcome to Chessnet! ♟</h1>
+  <p>Your chess community.</p>
+  <p>Your competition. Your rankings.</p>
+</section>
+
+<section class="home-shortcuts">
+
+  <a href="#quick-match" class="home-shortcut">
+    <span class="shortcut-icon">⚔</span>
+    <span>
+      <strong>Quick Match</strong>
+      <small>Find opponents and set your clock</small>
+    </span>
+  </a>
+
+  <a href="#tournaments" class="home-shortcut">
+    <span class="shortcut-icon">🏆</span>
+    <span>
+      <strong>Tournaments</strong>
+      <small>Competitions and results</small>
+    </span>
+  </a>
+
+  <a href="#groups" class="home-shortcut">
+    <span class="shortcut-icon">♟</span>
+    <span>
+      <strong>My Groups</strong>
+      <small>Create and manage communities</small>
+    </span>
+  </a>
+
+  <a href="#rankings" class="home-shortcut">
+    <span class="shortcut-icon">📊</span>
+    <span>
+      <strong>Rankings</strong>
+      <small>Rapid, Blitz and Bullet</small>
+    </span>
+  </a>
+
+</section>
+
 
   <section class="stats">
     <div class="stat">
@@ -327,7 +436,7 @@ footer {
         <button class="btn btn-outline" onclick="alert('Group creation coming soon!')">Create</button>
       </div>
 
-      <h2 class="section-title">Quick Match</h2>
+      <h2 class="section-title" id="quick-match">Quick Match</h2>
       <div class="panel">
         <h3>Find an opponent</h3>
         <p class="muted" style="margin:10px 0 17px">Get paired with an available member of your group.</p>
