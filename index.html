@@ -49,6 +49,64 @@ nav{display:none}
 main{padding:23px 4%}
 }
 </style>
+  
+<style>
+/* CHESSNET GROUPS DESIGN */
+
+#chessnet-groups {
+  background: #101b35;
+  color: #ffffff;
+  padding: 25px;
+  margin: 25px auto;
+  border-radius: 14px;
+  max-width: 1000px;
+}
+
+#chessnet-groups h2 {
+  color: #d4af37;
+  text-align: center;
+}
+
+#chessnet-groups h3 {
+  color: #d4af37;
+}
+
+#chessnet-groups .group-panel {
+  background: #192947;
+  border: 1px solid #b89535;
+  border-radius: 10px;
+  padding: 18px;
+  margin: 18px 0;
+}
+
+#chessnet-groups input,
+#chessnet-groups textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 7px;
+  border: 1px solid #b89535;
+  background: #101b35;
+  color: white;
+}
+
+#chessnet-groups button {
+  background: #d4af37;
+  color: #101b35;
+  border: none;
+  border-radius: 7px;
+  padding: 12px 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#group-status {
+  margin-top: 15px;
+  color: #d4af37;
+}
+</style>
+
 </head>
 
 <body>
@@ -869,5 +927,257 @@ main{padding:23px 4%}
 })();
 </script>
 
+<!-- CHESSNET GROUPS -->
+<section id="chessnet-groups" class="chess-section">
+  <h2>♟ Chessnet Groups</h2>
+  <p>Create groups, invite players and build your chess community.</p>
+
+  <div class="group-panel">
+    <h3>Create a Group</h3>
+    <input id="group-name" type="text"
+      placeholder="Group name">
+    <textarea id="group-description"
+      placeholder="Group description"></textarea>
+    <button id="create-group-btn">Create Group</button>
+  </div>
+
+  <div class="group-panel">
+    <h3>Join a Group</h3>
+    <input id="group-invite-code" type="text"
+      placeholder="Enter invitation code">
+    <button id="join-group-btn">Join Group</button>
+  </div>
+
+  <div class="group-panel">
+    <h3>My Groups</h3>
+    <button id="refresh-groups-btn">Refresh My Groups</button>
+    <div id="my-groups-list">
+      <p>Your groups will appear here.</p>
+    </div>
+  </div>
+
+  <div class="group-panel">
+    <h3>Group Members</h3>
+    <div id="group-members-list">
+      <p>Select a group to view its members.</p>
+    </div>
+  </div>
+
+  <div class="group-panel">
+    <h3>Group Administration</h3>
+    <div id="group-admin-panel">
+      <p>Group administration controls will appear here.</p>
+    </div>
+  </div>
+
+  <div id="group-status" role="status"></div>
+</section>
+<!-- END CHESSNET GROUPS -->
+
+// CHESSNET GROUPS - SUPABASE CONNECTION
+(function () {
+  const client = window.chessnetSupabase;
+
+  const status = document.getElementById("group-status");
+  const groupsList = document.getElementById("my-groups-list");
+  const membersList = document.getElementById("group-members-list");
+
+  let selectedGroupId = null;
+
+  function showStatus(message, isError = false) {
+    status.textContent = message;
+    status.style.color = isError ? "#ff7777" : "#d4af37";
+  }
+
+  async function checkClient() {
+    if (!window.chessnetSupabase) {
+      showStatus("Supabase connection not found. Please refresh.", true);
+      return false;
+    }
+
+    const { data, error } = await client.auth.getSession();
+
+    if (error || !data.session) {
+      showStatus("Please sign in before using Chessnet Groups.", true);
+      return false;
+    }
+
+    return true;
+  }
+
+  // CREATE GROUP
+  document.getElementById("create-group-btn")
+    .addEventListener("click", async function () {
+      if (!(await checkClient())) return;
+
+      const name = document.getElementById("group-name").value.trim();
+      const description =
+        document.getElementById("group-description").value.trim();
+
+      if (name.length < 3) {
+        showStatus("Group name must have at least 3 characters.", true);
+        return;
+      }
+
+      showStatus("Creating your group...");
+
+      const { data, error } = await client.rpc(
+        "create_chess_group",
+        {
+          p_name: name,
+          p_description: description || null
+        }
+      );
+
+      if (error) {
+        showStatus(error.message, true);
+        return;
+      }
+
+      document.getElementById("group-name").value = "";
+      document.getElementById("group-description").value = "";
+
+      showStatus("Group created successfully!");
+      loadMyGroups();
+    });
+
+  // JOIN GROUP
+  document.getElementById("join-group-btn")
+    .addEventListener("click", async function () {
+      if (!(await checkClient())) return;
+
+      const code =
+        document.getElementById("group-invite-code").value.trim();
+
+      if (!code) {
+        showStatus("Enter an invitation code.", true);
+        return;
+      }
+
+      showStatus("Joining group...");
+
+      const { data, error } = await client.rpc(
+        "join_group_by_invite",
+        { p_invite_code: code }
+      );
+
+      if (error) {
+        showStatus(error.message, true);
+        return;
+      }
+
+      document.getElementById("group-invite-code").value = "";
+
+      showStatus("You have joined the group!");
+      loadMyGroups();
+    });
+
+  // LOAD MY GROUPS
+  async function loadMyGroups() {
+    if (!(await checkClient())) return;
+
+    groupsList.textContent = "Loading your groups...";
+
+    const { data, error } =
+      await client.rpc("get_my_chess_groups");
+
+    if (error) {
+      groupsList.textContent = error.message;
+      return;
+    }
+
+    groupsList.replaceChildren();
+
+    if (!data || data.length === 0) {
+      groupsList.textContent = "You haven't joined any groups yet.";
+      return;
+    }
+
+    data.forEach(function (group) {
+      const card = document.createElement("div");
+      card.style.cssText =
+        "padding:14px;margin:12px 0;background:#101b35;border-radius:8px;";
+
+      const name = document.createElement("h4");
+      name.textContent = group.group_name;
+
+      const description = document.createElement("p");
+      description.textContent = group.description || "No description.";
+
+      const details = document.createElement("p");
+      details.textContent =
+        "Role: " + group.my_role +
+        " | Members: " + group.member_count;
+
+      const viewButton = document.createElement("button");
+      viewButton.textContent = "View Members";
+
+      viewButton.addEventListener("click", function () {
+        loadGroupMembers(group.group_id);
+      });
+
+      card.append(name, description, details, viewButton);
+      groupsList.appendChild(card);
+    });
+  }
+
+  // LOAD GROUP MEMBERS
+  async function loadGroupMembers(groupId) {
+    if (!(await checkClient())) return;
+
+    selectedGroupId = groupId;
+    membersList.textContent = "Loading members...";
+
+    const { data, error } = await client.rpc(
+      "get_group_members",
+      { p_group_id: groupId }
+    );
+
+    if (error) {
+      membersList.textContent = error.message;
+      return;
+    }
+
+    membersList.replaceChildren();
+
+    if (!data || data.length === 0) {
+      membersList.textContent = "No members found.";
+      return;
+    }
+
+    data.forEach(function (member) {
+      const item = document.createElement("div");
+      item.style.cssText =
+        "padding:10px;margin:8px 0;background:#192947;border-radius:7px;";
+
+      const player = document.createElement("strong");
+      player.textContent =
+        member.display_name ||
+        member.username ||
+        "Chessnet Member";
+
+      const role = document.createElement("p");
+      role.textContent = "Role: " + member.role;
+
+      item.append(player, role);
+      membersList.appendChild(item);
+    });
+  }
+
+  // REFRESH GROUPS
+  document.getElementById("refresh-groups-btn")
+    .addEventListener("click", loadMyGroups);
+
+  // LOAD GROUPS WHEN SIGNED IN
+  client?.auth?.getSession().then(function (result) {
+    if (result.data && result.data.session) {
+      loadMyGroups();
+    }
+  }).catch(function (error) {
+    console.error("Chessnet group loading:", error);
+  });
+
+})();
+        
 </body>
 </html>
