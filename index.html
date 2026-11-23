@@ -121,6 +121,28 @@ main{padding:23px 4%}
         <p class="muted" style="margin:10px 0">Round Robin, Swiss and Knockout tournaments.</p>
         <button class="btn btn-outline" onclick="alert('Tournament creation coming soon!')">View Tournaments</button>
       </div>
+      
+<h2 class="section-title" id="zed-members">
+  ZED CHESS OF THE ELITES
+</h2>
+
+<div class="panel">
+  <p class="muted" style="margin-bottom:14px">
+    Official Lichess team members on Chessnet.
+  </p>
+
+  <button class="btn" id="load-lichess-members">
+    Load Team Members
+  </button>
+
+  <p id="member-count" class="muted" style="margin-top:14px">
+    Members have not been loaded yet.
+  </p>
+
+  <div id="lichess-members-list" style="margin-top:15px">
+  </div>
+</div>
+
     </section>
 
     <section>
@@ -542,6 +564,159 @@ main{padding:23px 4%}
   }
 
   finishLichessConnection();
+
+  // ZED CHESS OF THE ELITES MEMBER DIRECTORY
+
+  const membersButton = document.getElementById("load-lichess-members");
+  const membersList = document.getElementById("lichess-members-list");
+  const memberCount = document.getElementById("member-count");
+
+  if (membersButton) {
+    membersButton.addEventListener("click", async () => {
+      membersButton.disabled = true;
+      membersButton.textContent = "Loading members...";
+      memberCount.textContent = "Connecting to Lichess...";
+      membersList.innerHTML = "";
+
+      try {
+        const response = await fetch(
+          "https://lichess.org/api/team/zedchess-of-the-elites/users",
+          {
+            headers: {
+              "Accept": "application/x-ndjson"
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Lichess returned error " + response.status);
+        }
+
+        const rawData = await response.text();
+
+        const members = rawData
+          .split(/\r?\n/)
+          .filter(line => line.trim())
+          .map(line => JSON.parse(line));
+
+        if (members.length === 0) {
+          memberCount.textContent = "No team members found.";
+          return;
+        }
+
+        memberCount.textContent =
+          members.length + " Lichess team members found.";
+
+        
+        // Get online and playing status from Lichess
+        const ids = members
+          .map(member => member.id || member.username)
+          .filter(Boolean);
+
+        let statuses = {};
+
+        if (ids.length > 0) {
+          try {
+            const statusResponse = await fetch(
+              "https://lichess.org/api/users/status?ids=" +
+              ids.map(encodeURIComponent).join(",") +
+              "&withGameIds=true"
+            );
+
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              statusData.forEach(player => {
+                statuses[player.id] = player;
+              });
+            }
+          } catch (statusError) {
+            console.warn("Could not load player statuses:", statusError);
+          }
+        }
+
+        members.forEach(member => {
+          const username = member.username || member.id;
+          const status = statuses[(member.id || "").toLowerCase()];
+
+          const isOnline = status && status.online;
+          const isPlaying = status && status.playing;
+
+          const card = document.createElement("div");
+
+          card.style.cssText =
+            "padding:14px;margin-bottom:10px;background:#203550;" +
+            "border:1px solid #344b68;border-radius:10px;";
+
+          const top = document.createElement("div");
+          top.style.cssText =
+            "display:flex;justify-content:space-between;" +
+            "align-items:center;gap:10px;flex-wrap:wrap;";
+
+          const name = document.createElement("strong");
+          name.textContent = username;
+          name.style.color = "#ffffff";
+
+          const badge = document.createElement("span");
+          badge.style.fontSize = "12px";
+
+          if (isPlaying) {
+            badge.textContent = "♟ Playing";
+            badge.style.color = "#e6bd65";
+          } else if (isOnline) {
+            badge.textContent = "● Online";
+            badge.style.color = "#58d68d";
+          } else {
+            badge.textContent = "● Offline";
+            badge.style.color = "#9baabd";
+          }
+
+          const profile = document.createElement("a");
+          profile.href = "https://lichess.org/@/" +
+            encodeURIComponent(username);
+          profile.target = "_blank";
+          profile.rel = "noopener noreferrer";
+          profile.textContent = "View Lichess profile →";
+          profile.style.cssText =
+            "display:inline-block;margin-top:12px;" +
+            "color:#e6bd65;text-decoration:none;font-size:13px;";
+
+          top.appendChild(name);
+          top.appendChild(badge);
+          card.appendChild(top);
+          card.appendChild(profile);
+
+          membersList.appendChild(card);
+        });
+
+          const name = document.createElement("strong");
+          name.textContent = member.username || member.id;
+
+          const link = document.createElement("a");
+          link.href = "https://lichess.org/@/" +
+            encodeURIComponent(member.username || member.id);
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "View profile";
+          link.style.color = "#e6bd65";
+
+          card.appendChild(name);
+          card.appendChild(link);
+          membersList.appendChild(card);
+        });
+
+        membersButton.textContent = "Refresh Members";
+
+      } catch (error) {
+        memberCount.textContent =
+          "Could not load members: " + error.message;
+
+        membersButton.textContent = "Try Again";
+
+      } finally {
+        membersButton.disabled = false;
+      }
+    });
+  }
 
   console.log("Chessnet connected to Supabase!");
 })();
