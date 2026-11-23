@@ -894,20 +894,7 @@ main{padding:23px 4%}
         });
 
           const name = document.createElement("strong");
-          name.textContent = member.username || member.id;
-
-          const link = document.createElement("a");
-          link.href = "https://lichess.org/@/" +
-            encodeURIComponent(member.username || member.id);
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.textContent = "View profile";
-          link.style.color = "#e6bd65";
-
-          card.appendChild(name);
-          card.appendChild(link);
-          membersList.appendChild(card);
-        });
+          
 
         membersButton.textContent = "Refresh Members";
         renderLichessRankings();
@@ -973,7 +960,7 @@ main{padding:23px 4%}
   <div id="group-status" role="status"></div>
 </section>
 <!-- END CHESSNET GROUPS -->
-
+<script>
 // CHESSNET GROUPS - SUPABASE CONNECTION
 (function () {
   const client = window.chessnetSupabase;
@@ -1178,6 +1165,7 @@ main{padding:23px 4%}
   });
 
 })();
+  </script>
         
 </body>
 </html>
