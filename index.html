@@ -107,6 +107,131 @@ main{padding:23px 4%}
 }
 </style>
 
+<style>
+/* CHESSNET NEW PINK & PURPLE THEME */
+
+:root {
+  --pink: #f044ad;
+  --purple: #922de2;
+  --lavender: #cbb5ff;
+  --dark: #0c081b;
+  --card: #1b1232;
+}
+
+body {
+  background: var(--dark);
+  color: #ffffff;
+}
+
+header {
+  background: #130b27;
+  border-bottom: 1px solid #43205f;
+}
+
+.logo {
+  color: var(--pink);
+}
+
+.logo span {
+  color: #ffffff;
+}
+
+nav a {
+  color: var(--lavender);
+}
+
+nav a:hover {
+  color: var(--pink);
+}
+
+.profile {
+  background: linear-gradient(120deg, #7625b9, #d52c9b);
+  color: white;
+}
+
+.panel, .stat, .group-card {
+  background: var(--card);
+  border-color: #492467;
+}
+
+.btn {
+  background: linear-gradient(120deg, #f044ad, #922de2);
+  color: white;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  background: linear-gradient(120deg, #ff62c0, #a64aff);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--pink);
+  color: var(--lavender);
+}
+
+.section-title {
+  color: var(--lavender);
+}
+
+footer {
+  border-color: #492467;
+}
+
+/* MOBILE NAVIGATION */
+@media(max-width:700px) {
+  header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  nav {
+    display: flex;
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 20px;
+    padding: 10px 0;
+    scrollbar-width: none;
+  }
+
+  nav a {
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 21px;
+  }
+}
+
+/* GROUPS THEME */
+#chessnet-groups {
+  background: #130b27;
+  border: 1px solid #492467;
+}
+
+#chessnet-groups h2,
+#chessnet-groups h3 {
+  color: var(--lavender);
+}
+
+#chessnet-groups .group-panel {
+  background: var(--card);
+  border-color: #492467;
+}
+
+#chessnet-groups button {
+  background: linear-gradient(120deg, #f044ad, #922de2);
+  color: white;
+}
+
+#group-status {
+  color: var(--pink);
+}
+</style>
+
 </head>
 
 <body>
