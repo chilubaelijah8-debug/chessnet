@@ -230,6 +230,39 @@ footer {
 #group-status {
   color: var(--pink);
 }
+  
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.main-nav a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.main-nav a span {
+  font-size: 16px;
+  color: #f044ad;
+}
+
+@media(max-width:700px) {
+  .main-nav {
+    overflow-x: auto;
+    width: 100%;
+    gap: 18px;
+    padding: 8px 0;
+  }
+
+  .main-nav a {
+    flex-shrink: 0;
+  }
+}
+
 </style>
 
 </head>
@@ -238,12 +271,15 @@ footer {
 
 <header>
   <div class="logo">CHESS<span>NET</span> ♟</div>
-  <nav>
-    <a href="#home">Home</a>
-    <a href="#groups">Groups</a>
-    <a href="#tournaments">Tournaments</a>
-    <a href="#rankings">Rankings</a>
-  </nav>
+  
+<nav class="main-nav">
+  <a href="#home"><span>⌂</span> Home</a>
+  <a href="#groups"><span>♟</span> Groups</a>
+  <a href="#quick-match"><span>⚔</span> Quick Match</a>
+  <a href="#tournaments"><span>🏆</span> Tournaments</a>
+  <a href="#rankings"><span>▥</span> Rankings</a>
+</nav>
+
   <div class="profile">My Profile</div>
 </header>
 
