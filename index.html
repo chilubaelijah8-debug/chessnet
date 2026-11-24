@@ -561,10 +561,196 @@ footer {
   </div>
 </header>
 
+<main id="home">
+
+  <!-- HOME -->
+  <section class="home-hero">
+    <h1>Welcome to Chessnet! ♟</h1>
+    <p>Your chess community. Your competition. Your rankings.</p>
+    <p>Connect with players, compete and build your chess journey.</p>
+  </section>
+
+  <section class="home-shortcuts">
+    <a href="#quick-match" class="home-shortcut">⚔ Quick Match</a>
+    <a href="#tournaments" class="home-shortcut">🏆 Tournaments</a>
+    <a href="#chessnet-groups" class="home-shortcut">♟ My Groups</a>
+    <a href="#rankings" class="home-shortcut">📊 Rankings</a>
+  </section>
+
+  <!-- QUICK MATCH -->
+  <section id="quick-match">
+    <h2 class="section-title">⚔ Quick Match</h2>
+    <div class="panel chess-game-panel">
+      <h3>Chessnet Arena</h3>
+      <p class="muted">Play a local chess game.</p>
+
+      <div class="chess-controls">
+        <label for="chess-time">Time control</label>
+        <select id="chess-time">
+          <option value="60">1 minute</option>
+          <option value="120">2 minutes</option>
+          <option value="180" selected>3 minutes</option>
+          <option value="300">5 minutes</option>
+          <option value="600">10 minutes</option>
+          <option value="900">15 minutes</option>
+          <option value="1800">30 minutes</option>
+        </select>
+      </div>
+
+      <div class="chess-clocks">
+        <div><small>BLACK</small><strong id="black-clock">03:00</strong></div>
+        <div><small>WHITE</small><strong id="white-clock">03:00</strong></div>
+      </div>
+
+      <div id="chess-board"></div>
+      <p id="chess-status" class="muted">White to move.</p>
+
+      <div class="chess-actions">
+        <button class="btn" id="new-chess-game">New Game</button>
+        <button class="btn btn-outline" id="undo-chess-move">Undo Move</button>
+        <button class="btn btn-outline" id="flip-chess-board">Flip Board</button>
+      </div>
+
+      <h4 style="margin-top:20px">Move History</h4>
+      <div id="chess-move-history">No moves yet.</div>
+    </div>
+  </section>
+
+  <!-- GROUPS -->
+  <section id="chessnet-groups">
+    <h2 class="section-title">♟ Chessnet Groups</h2>
+    <p class="muted">Create communities, invite players and manage your groups.</p>
+
+    <div class="panel" style="margin-top:15px">
+      <h3>Create a Group</h3>
+      <input id="group-name" type="text" placeholder="Group name">
+      <textarea id="group-description" placeholder="Describe your group" rows="3"></textarea>
+      <button class="btn" id="create-group-btn">Create Group</button>
+    </div>
+
+    <div class="panel" style="margin-top:15px">
+      <h3>Join a Group</h3>
+      <input id="group-invite-code" type="text" placeholder="Invitation code">
+      <button class="btn" id="join-group-btn">Join Group</button>
+    </div>
+
+    <div class="panel" style="margin-top:15px">
+      <h3>My Groups</h3>
+      <button class="btn btn-outline" id="refresh-groups-btn">Refresh My Groups</button>
+      <div id="my-groups-list">Sign in to view your groups.</div>
+    </div>
+
+    <div class="panel" style="margin-top:15px">
+      <h3>Group Members</h3>
+      <div id="group-members-list">Select a group to view its members.</div>
+    </div>
+
+    <div class="panel" style="margin-top:15px">
+      <h3>Group Administration</h3>
+      <div id="group-admin-panel">Administration options will appear here.</div>
+    </div>
+
+    <p id="group-status"></p>
+  </section>
+
+  <!-- TOURNAMENTS -->
+  <section id="tournaments">
+    <h2 class="section-title">🏆 Tournaments</h2>
+    <div class="panel">
+      <h3>Chessnet Tournament Arena</h3>
+      <p class="muted">Explore chess competitions and tournaments.</p>
+      <p class="muted">Formats: Round Robin, Swiss and Knockout.</p>
+    </div>
+
+    <h2 class="section-title">ZED Chess of the Elites</h2>
+    <div class="panel">
+      <p class="muted">Official Lichess team members.</p>
+      <button class="btn" id="load-lichess-members">Load Team Members</button>
+      <p id="member-count" class="muted">Members have not been loaded yet.</p>
+      <div id="lichess-members-list"></div>
+    </div>
+  </section>
+
+  <!-- RANKINGS -->
+  <section id="rankings">
+    <h2 class="section-title">📊 Group Rankings</h2>
+    <div class="panel">
+      <h3>ZED Chess Leaderboard</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:15px 0">
+        <button class="btn ranking-tab" data-type="rapid">Rapid</button>
+        <button class="btn btn-outline ranking-tab" data-type="blitz">Blitz</button>
+        <button class="btn btn-outline ranking-tab" data-type="bullet">Bullet</button>
+      </div>
+      <p id="ranking-message" class="muted">Load team members to view rankings.</p>
+      <div id="ranking-list"></div>
+    </div>
+  </section>
+
+  <!-- CHESS ACCOUNTS -->
+  <section id="chess-accounts">
+    <h2 class="section-title">Chess Accounts</h2>
+    <div class="panel">
+      <h3>Lichess</h3>
+      <p class="muted">Connect your Lichess account.</p>
+      <button class="btn" id="connect-lichess">Connect to Lichess</button>
+      <p id="lichess-message" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- PLAYER PROFILE -->
+  <section id="player-profile">
+    <h2 class="section-title">My Player Profile</h2>
+    <div class="panel">
+      <h3 id="profile-name">Chessnet Player</h3>
+      <p id="profile-email" class="muted">Your player account</p>
+      <p style="margin-top:15px">Lichess Account:</p>
+      <p id="profile-lichess" class="muted">Not connected</p>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings">
+    <h2 class="section-title">⚙ Settings</h2>
+    <div class="panel">
+      <h3>Account Preferences</h3>
+
+      <div class="setting-row">
+        <strong>Game notifications</strong>
+        <input type="checkbox" id="game-notifications" checked>
+      </div>
+
+      <div class="setting-row">
+        <strong>Tournament notifications</strong>
+        <input type="checkbox" id="tournament-notifications" checked>
+      </div>
+
+      <div class="setting-row">
+        <strong>Group notifications</strong>
+        <input type="checkbox" id="group-notifications" checked>
+      </div>
+
+      <div class="setting-row">
+        <strong>Compact layout</strong>
+        <input type="checkbox" id="compact-layout">
+      </div>
+
+      <button class="btn" id="save-settings">Save Preferences</button>
+      <p id="settings-message" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- LIVE ACTIVITY -->
+  <section id="live-activity">
+    <h2 class="section-title">Live Activity</h2>
+    <div class="panel">
+      <p class="muted">Player and group activity will appear here.</p>
+    </div>
+  </section>
+
+</main>
 
 
 
-      
 
 <footer>
   CHESSNET ♟<br><br>
