@@ -48,6 +48,102 @@ nav{display:none}
 .stat strong{font-size:21px}
 main{padding:23px 4%}
 }
+  
+/* CHESSNET SINGLE-PAGE NAVIGATION */
+
+main > section {
+  display: none;
+}
+
+main > .home-hero,
+main > .home-shortcuts {
+  display: block;
+}
+
+/* Smaller welcome heading */
+.home-hero {
+  padding: 16px 18px;
+  margin: 12px 0 20px;
+  border-radius: 12px;
+}
+
+.home-hero h1 {
+  font-size: 21px;
+  margin-bottom: 5px;
+}
+
+.home-hero p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.home-hero p:last-child {
+  display: none;
+}
+
+/* Four main feature cards */
+.home-shortcuts {
+  margin-top: 15px;
+  gap: 12px;
+}
+
+.home-shortcut {
+  min-height: 100px;
+  border-radius: 13px;
+  transition: .2s;
+}
+
+.home-shortcut .shortcut-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #492467;
+  font-size: 25px;
+}
+
+.home-shortcut strong {
+  font-size: 15px;
+}
+
+.home-shortcut small {
+  font-size: 11px;
+}
+
+/* Account shortcuts */
+.home-account-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 25px;
+}
+
+.home-account-actions a {
+  color: #f044ad;
+  text-decoration: none;
+  font-size: 13px;
+  padding: 10px 13px;
+  border: 1px solid #492467;
+  border-radius: 8px;
+}
+
+/* Hide the large sections until selected */
+main > section.page-active {
+  display: block;
+}
+
+@media(max-width:420px) {
+  .home-shortcuts {
+    gap: 9px;
+  }
+
+  .home-shortcut {
+    min-height: 90px;
+  }
+}
+
 </style>
   
 <style>
@@ -570,12 +666,29 @@ footer {
     <p>Connect with players, compete and build your chess journey.</p>
   </section>
 
-  <section class="home-shortcuts">
-    <a href="#quick-match" class="home-shortcut">⚔ Quick Match</a>
-    <a href="#tournaments" class="home-shortcut">🏆 Tournaments</a>
-    <a href="#chessnet-groups" class="home-shortcut">♟ My Groups</a>
-    <a href="#rankings" class="home-shortcut">📊 Rankings</a>
-  </section>
+
+<section class="home-shortcuts">
+  <a href="#quick-match" class="home-shortcut">
+    <span class="shortcut-icon">♞</span>
+    <span><strong>Quick Match</strong><small>Find a chess opponent</small></span>
+  </a>
+
+  <a href="#tournaments" class="home-shortcut">
+    <span class="shortcut-icon">♜</span>
+    <span><strong>Tournaments</strong><small>Compete and win</small></span>
+  </a>
+
+  <a href="#chessnet-groups" class="home-shortcut">
+    <span class="shortcut-icon">♟</span>
+    <span><strong>My Groups</strong><small>Your chess communities</small></span>
+  </a>
+
+  <a href="#rankings" class="home-shortcut">
+    <span class="shortcut-icon">♛</span>
+    <span><strong>Rankings</strong><small>View player ratings</small></span>
+  </a>
+</section>
+
 
   <!-- QUICK MATCH -->
   <section id="quick-match">
@@ -1865,7 +1978,78 @@ loadChessnetSettings();
   });
 
 })();
+  
+// CHESSNET PAGE NAVIGATION
+(function () {
+  const main = document.getElementById("home");
+  if (!main) return;
+
+  const hero = main.querySelector(".home-hero");
+  const shortcuts = main.querySelector(".home-shortcuts");
+
+  // Add account actions beneath the four main cards
+  if (!document.querySelector(".home-account-actions")) {
+    const actions = document.createElement("div");
+    actions.className = "home-account-actions";
+    actions.innerHTML =
+      '<a href="#account-section">＋ Create Account / Log In</a>' +
+      '<a href="#chess-accounts">Connect Lichess ↗</a>';
+
+    shortcuts.insertAdjacentElement("afterend", actions);
+  }
+
+  function showPage(id) {
+    const target = document.getElementById(id);
+    if (!target) return;
+
+    const isHome = id === "home";
+
+    main.querySelectorAll(":scope > section").forEach(section => {
+      section.classList.remove("page-active");
+    });
+
+    hero.style.display = isHome ? "block" : "none";
+    shortcuts.style.display = isHome ? "block" : "none";
+
+    const accountActions =
+      document.querySelector(".home-account-actions");
+
+    if (accountActions) {
+      accountActions.style.display = isHome ? "flex" : "none";
+    }
+
+    if (!isHome && target.parentElement === main) {
+      target.classList.add("page-active");
+    }
+
+    if (target.id === "account-section") {
+      target.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    history.replaceState(null, "", "#" + id);
+  }
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+
+    const id = link.getAttribute("href").slice(1);
+    if (!document.getElementById(id)) return;
+
+    event.preventDefault();
+    showPage(id);
+
+    const dropdown = document.getElementById("profile-dropdown");
+    if (dropdown) dropdown.classList.remove("show");
+  });
+
+  // Always start at the clean homepage
+  showPage("home");
+})();
+
   </script>
-        
+      
 </body>
 </html>
