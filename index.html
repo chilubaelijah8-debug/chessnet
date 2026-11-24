@@ -717,13 +717,7 @@ footer {
     <section>
       <h2 class="section-title">Chess Accounts</h2>
 
-      <div class="panel">
-        <h3>Chess.com</h3>
-        <p class="muted" style="margin:9px 0">Connect your Chess.com profile to Chessnet.</p>
-        <input id="chesscom-username" type="text" placeholder="Your Chess.com username" style="width:100%;padding:12px;margin:8px 0">
-        <button class="btn btn-outline" id="connect-chesscom">Connect Chess.com</button>
-        <p id="chesscom-message" class="muted"></p>
-      </div>
+      
 
       <div class="panel" style="margin-top:12px">
   <h3>Lichess</h3>
@@ -953,7 +947,7 @@ footer {
       return;
     }
 
-    const chesscom = data.find(a => a.provider === "chess.com");
+    
     const lichess = data.find(a => a.provider === "lichess");
 
     // Display connected Lichess account on player profile
@@ -971,12 +965,7 @@ footer {
 
     const chesscomButton = document.getElementById("connect-chesscom");
 
-    if (chesscom) {
-      document.getElementById("chesscom-message").textContent =
-        "Connected: " + chesscom.username +
-        (chesscom.verified ? " · Verified" : " · Ownership unverified");
-      chesscomButton.textContent = "Reconnect Chess.com";
-    }
+    
 
     if (lichess) {
       lichessMessage.textContent =
@@ -1113,57 +1102,7 @@ footer {
     updateAuthUI(null);
   });
 
-  // CHESS.COM PROFILE CONNECTION
-  document.getElementById("connect-chesscom").addEventListener("click", async () => {
-    const username = document.getElementById("chesscom-username").value.trim();
-    const message = document.getElementById("chesscom-message");
-
-    if (!username) {
-      message.textContent = "Enter your Chess.com username.";
-      return;
-    }
-
-    message.textContent = "Checking Chess.com profile...";
-
-    try {
-      const { data: userData, error: userError } = await client.auth.getUser();
-
-      if (userError || !userData.user) {
-        message.textContent = "Please log in to Chessnet first.";
-        return;
-      }
-
-      const response = await fetch(
-        "https://api.chess.com/pub/player/" + encodeURIComponent(username)
-      );
-
-      if (!response.ok) {
-        message.textContent = "Chess.com username not found. Check it and try again.";
-        return;
-      }
-
-      const profile = await response.json();
-
-      const { error } = await client
-        .from("connected_chess_accounts")
-        .upsert({
-          user_id: userData.user.id,
-          provider: "chess.com",
-          username: profile.username,
-          verified: false
-        }, {
-          onConflict: "user_id,provider"
-        });
-
-      if (error) throw error;
-
-      message.textContent = "Chess.com profile connected: " + profile.username +
-        ". Ownership is not verified yet.";
-
-    } catch (error) {
-      message.textContent = "Connection failed: " + error.message;
-    }
-  });
+  
 
   // LICHESS OFFICIAL ACCOUNT CONNECTION (OAuth 2.0 + PKCE)
 
