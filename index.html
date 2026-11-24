@@ -381,6 +381,38 @@ footer {
   border-radius: 7px;
 }
 
+/* SETTINGS DESIGN */
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 0;
+  border-bottom: 1px solid #492467;
+}
+
+.setting-row p {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.setting-row input {
+  accent-color: #f044ad;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+#save-settings {
+  margin-top: 20px;
+}
+
+.compact-mode .panel,
+.compact-mode .stat {
+  padding: 11px;
+}
+
 </style>
 
 </head>
@@ -1307,6 +1339,50 @@ document.getElementById("profile-logout")
   .addEventListener("click", function () {
     document.getElementById("logout-button").click();
   });
+
+// CHESSNET SETTINGS MANAGEMENT
+
+const settingIds = [
+  "game-notifications",
+  "tournament-notifications",
+  "group-notifications",
+  "compact-layout"
+];
+
+function loadChessnetSettings() {
+  settingIds.forEach(id => {
+    const saved = localStorage.getItem("chessnet_" + id);
+    if (saved !== null) {
+      document.getElementById(id).checked = saved === "true";
+    }
+  });
+
+  applyCompactLayout();
+}
+
+function applyCompactLayout() {
+  document.body.classList.toggle(
+    "compact-mode",
+    document.getElementById("compact-layout").checked
+  );
+}
+
+document.getElementById("save-settings")
+  .addEventListener("click", function () {
+    settingIds.forEach(id => {
+      localStorage.setItem(
+        "chessnet_" + id,
+        document.getElementById(id).checked
+      );
+    });
+
+    applyCompactLayout();
+
+    document.getElementById("settings-message").textContent =
+      "Preferences saved successfully!";
+  });
+
+loadChessnetSettings();
 
   console.log("Chessnet connected to Supabase!");
 })();
