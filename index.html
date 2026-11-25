@@ -916,7 +916,7 @@ footer {
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   window.chessnetSupabase = client;
 
-  // LOAD SAVED CHESS ACCOUNT CONNECTIONS
+// LOAD SAVED CHESS ACCOUNT CONNECTIONS + RATING ANALYTICS
 async function loadConnectedAccounts(userId) {
   const { data, error } = await client
     .from("connected_chess_accounts")
@@ -928,25 +928,20 @@ async function loadConnectedAccounts(userId) {
     return;
   }
 
-  const lichess = (data || []).find(
-    a => a.provider === "lichess"
-  );
+  const lichess = (data || []).find(a => a.provider === "lichess");
 
-  const profileLichess =
-    document.getElementById("profile-lichess");
+  const profileLichess = document.getElementById("profile-lichess");
+  const lichessMessage = document.getElementById("lichess-message");
+  const lichessButton = document.getElementById("connect-lichess");
 
-  const lichessMessage =
-    document.getElementById("lichess-message");
-
-  const lichessButton =
-    document.getElementById("connect-lichess");
-
-  document.querySelectorAll("#lichess-ratings-card")
-    .forEach(card => card.remove());
+  document.querySelectorAll(
+    "#lichess-ratings-card, #rating-analytics-card"
+  ).forEach(card => card.remove());
 
   if (profileLichess) {
-    profileLichess.textContent =
-      lichess ? lichess.username : "Not connected";
+    profileLichess.textContent = lichess
+      ? lichess.username
+      : "Not connected";
   }
 
   if (!lichess) {
@@ -972,27 +967,29 @@ async function loadConnectedAccounts(userId) {
   }
 
   try {
-    const response = await fetch(
+    // FETCH CURRENT PROFILE
+    const profileResponse = await fetch(
       "https://lichess.org/api/user/" +
       encodeURIComponent(lichess.username)
     );
 
-    if (!response.ok) {
+    if (!profileResponse.ok) {
       throw new Error("Lichess profile could not load.");
     }
 
-    const player = await response.json();
+    const player = await profileResponse.json();
     const perfs = player.perfs || {};
 
-    const card = document.createElement("div");
-    card.id = "lichess-ratings-card";
+    // CURRENT RATINGS CARD
+    const ratingCard = document.createElement("div");
+    ratingCard.id = "lichess-ratings-card";
 
-    card.style.cssText =
+    ratingCard.style.cssText =
       "margin-top:16px;padding:16px;" +
       "background:#1b1232;border:1px solid #492467;" +
       "border-radius:14px;color:white;";
 
-    card.innerHTML = `
+    ratingCard.innerHTML = `
       <h3 style="margin-bottom:15px">
         ♟ My Lichess Ratings
       </h3>
@@ -1002,46 +999,25 @@ async function loadConnectedAccounts(userId) {
         grid-template-columns:repeat(3,1fr);
         gap:8px;
       ">
+        ${["rapid","blitz","bullet"].map(type => `
+          <div style="
+            padding:12px 5px;
+            background:#281641;
+            border-radius:10px;
+            text-align:center;
+          ">
+            <small>${type.charAt(0).toUpperCase() + type.slice(1)}</small>
 
-        <div style="
-          padding:12px;
-          background:#281641;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Rapid</small>
-          <strong id="my-rapid-rating"
-            style="display:block;font-size:23px;color:#f044ad">
-            ${perfs.rapid?.rating ?? "—"}
-          </strong>
-        </div>
-
-        <div style="
-          padding:12px;
-          background:#281641;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Blitz</small>
-          <strong id="my-blitz-rating"
-            style="display:block;font-size:23px;color:#cbb5ff">
-            ${perfs.blitz?.rating ?? "—"}
-          </strong>
-        </div>
-
-        <div style="
-          padding:12px;
-          background:#281641;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Bullet</small>
-          <strong id="my-bullet-rating"
-            style="display:block;font-size:23px;color:#f044ad">
-            ${perfs.bullet?.rating ?? "—"}
-          </strong>
-        </div>
-
+            <strong style="
+              display:block;
+              font-size:23px;
+              color:#f044ad;
+              margin-top:5px;
+            ">
+              ${perfs[type]?.rating ?? "—"}
+            </strong>
+          </div>
+        `).join("")}
       </div>
 
       <a href="https://lichess.org/@/${encodeURIComponent(lichess.username)}"
@@ -1060,26 +1036,480 @@ async function loadConnectedAccounts(userId) {
     if (profileLichess) {
       profileLichess.insertAdjacentElement(
         "afterend",
-        card
+        ratingCard
       );
     }
 
-    const profileName =
-      document.getElementById("profile-name");
+    const profileName = document.getElementById("profile-name");
 
     if (profileName && player.username) {
       profileName.textContent = player.username;
     }
 
+    // RATING ANALYTICS CONTAINER
+    const analytics = document.createElement("div");
+    analytics.id = "rating-analytics-card";
+
+    analytics.style.cssText =
+      "margin-top:16px;padding:16px;" +
+      "background:#130b27;border:1px solid #69318a;" +
+      "border-radius:14px;color:white;";
+
+    analytics.innerHTML = `
+      <h3 style="margin-bottom:5px">
+        📈 Rating Analytics
+      </h3>
+
+      <p style="
+        font-size:12px;
+        color:#cbb5ff;
+        margin-bottom:15px;
+      ">
+        Your rating progress and performance history
+      </p>
+
+      <div id="analytics-type-tabs" style="
+        display:flex;
+        gap:7px;
+        margin-bottom:12px;
+      ">
+        <button data-perf="rapid">Rapid</button>
+        <button data-perf="blitz">Blitz</button>
+        <button data-perf="bullet">Bullet</button>
+      </div>
+
+      <div id="analytics-period-tabs" style="
+        display:grid;
+        grid-template-columns:repeat(5,1fr);
+        gap:5px;
+        margin-bottom:15px;
+      ">
+        <button data-period="7">1W</button>
+        <button data-period="30">1M</button>
+        <button data-period="90">3M</button>
+        <button data-period="365">1Y</button>
+        <button data-period="all">ALL</button>
+      </div>
+
+      <div id="analytics-content">
+        <p style="color:#cbb5ff">
+          Loading rating history...
+        </p>
+      </div>
+    `;
+
+    ratingCard.insertAdjacentElement("afterend", analytics);
+
+    // BUTTON STYLING
+    analytics.querySelectorAll("button").forEach(button => {
+      button.style.cssText =
+        "padding:9px 4px;border-radius:7px;" +
+        "border:1px solid #69318a;" +
+        "background:#281641;color:#cbb5ff;" +
+        "font-size:12px;font-weight:bold;cursor:pointer;";
+    });
+
+    // FETCH HISTORICAL RATINGS
+    const historyResponse = await fetch(
+      "https://lichess.org/api/user/" +
+      encodeURIComponent(lichess.username) +
+      "/rating-history"
+    );
+
+    if (!historyResponse.ok) {
+      throw new Error("Rating history could not be loaded.");
+    }
+
+    const historyData = await historyResponse.json();
+
+    let selectedPerf = "rapid";
+    let selectedPeriod = "30";
+
+    // FIND CATEGORY HISTORY
+    function getPerfHistory(perf) {
+      const item = historyData.find(entry =>
+        String(entry[0]).toLowerCase() === perf.toLowerCase()
+      );
+
+      if (!item || !Array.isArray(item[1])) {
+        return [];
+      }
+
+      return item[1].map(point => ({
+        date: new Date(point[0], point[1], point[2]),
+        rating: Number(point[3])
+      })).filter(point =>
+        Number.isFinite(point.rating)
+      ).sort((a, b) => a.date - b.date);
+    }
+
+    // RENDER ANALYTICS
+    function renderAnalytics() {
+      const content = document.getElementById("analytics-content");
+      if (!content) return;
+
+      const allPoints = getPerfHistory(selectedPerf);
+      const currentRating = perfs[selectedPerf]?.rating;
+
+      const now = new Date();
+      let cutoff = null;
+
+      if (selectedPeriod !== "all") {
+        cutoff = new Date();
+        cutoff.setDate(
+          cutoff.getDate() - Number(selectedPeriod)
+        );
+      }
+
+      // Include the last point before the cutoff
+      // so the graph has a proper starting value.
+      let points = allPoints;
+
+      if (cutoff) {
+        const before = allPoints.filter(
+          point => point.date < cutoff
+        );
+
+        const after = allPoints.filter(
+          point => point.date >= cutoff
+        );
+
+        points = [
+          ...(before.length ? [before[before.length - 1]] : []),
+          ...after
+        ];
+      }
+
+      if (points.length === 0) {
+        content.innerHTML = `
+          <p style="color:#cbb5ff;padding:15px 0">
+            No ${selectedPerf} rating history available.
+          </p>
+        `;
+        return;
+      }
+
+      const startRating = points[0].rating;
+      const endRating = currentRating ??
+        points[points.length - 1].rating;
+
+      let gained = 0;
+      let lost = 0;
+
+      for (let i = 1; i < points.length; i++) {
+        const change = points[i].rating - points[i - 1].rating;
+
+        if (cutoff && points[i].date < cutoff) {
+          continue;
+        }
+
+        if (change > 0) gained += change;
+        if (change < 0) lost += Math.abs(change);
+      }
+
+      const net = endRating - startRating;
+
+      const highest = Math.max(
+        ...points.map(point => point.rating)
+      );
+
+      // GRAPH DIMENSIONS
+      const width = 320;
+      const height = 150;
+      const padding = 18;
+
+      const ratings = points.map(point => point.rating);
+      const minRating = Math.min(...ratings);
+      const maxRating = Math.max(...ratings);
+
+      const spread = Math.max(30, maxRating - minRating);
+      const graphMin = minRating - spread * 0.15;
+      const graphMax = maxRating + spread * 0.15;
+
+      const coordinates = points.map((point, index) => {
+        const x = points.length === 1
+          ? width / 2
+          : padding +
+            (index / (points.length - 1)) *
+            (width - padding * 2);
+
+        const y = height - padding -
+          ((point.rating - graphMin) /
+          (graphMax - graphMin)) *
+          (height - padding * 2);
+
+        return { x, y, point };
+      });
+
+      const polyline = coordinates.map(
+        point => `${point.x},${point.y}`
+      ).join(" ");
+
+      const area = `${padding},${height-padding} ` +
+        polyline + ` ${width-padding},${height-padding}`;
+
+      const lastPoint = coordinates[coordinates.length - 1];
+
+      const changeColor = net >= 0
+        ? "#55dfa0"
+        : "#ff737d";
+
+      const changeSymbol = net >= 0 ? "+" : "";
+
+      const periodName = {
+        "7": "Last 7 days",
+        "30": "Last 30 days",
+        "90": "Last 90 days",
+        "365": "Last year",
+        "all": "All-time"
+      }[selectedPeriod];
+
+      const dateLabel = date => {
+        return date.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
+      };
+
+      content.innerHTML = `
+        <div style="
+          background:#281641;
+          padding:15px;
+          border-radius:10px;
+          margin-bottom:12px;
+        ">
+          <small style="color:#cbb5ff">
+            CURRENT ${selectedPerf.toUpperCase()} RATING
+          </small>
+
+          <div style="
+            font-size:32px;
+            font-weight:bold;
+            margin:7px 0;
+          ">
+            ${currentRating ?? endRating}
+          </div>
+
+          <strong style="color:${changeColor}">
+            ${changeSymbol}${net} points
+            ${net >= 0 ? "▲" : "▼"}
+          </strong>
+
+          <small style="
+            display:block;
+            color:#cbb5ff;
+            margin-top:5px;
+          ">
+            ${periodName}
+          </small>
+        </div>
+
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(2,1fr);
+          gap:8px;
+          margin-bottom:12px;
+        ">
+          <div style="
+            padding:13px;
+            background:#211136;
+            border-radius:9px;
+          ">
+            <small style="color:#cbb5ff">Highest</small>
+            <strong style="
+              display:block;
+              font-size:22px;
+              margin-top:6px;
+            ">${highest}</strong>
+          </div>
+
+          <div style="
+            padding:13px;
+            background:#211136;
+            border-radius:9px;
+          ">
+            <small style="color:#cbb5ff">Net Change</small>
+            <strong style="
+              display:block;
+              font-size:22px;
+              margin-top:6px;
+              color:${changeColor};
+            ">${changeSymbol}${net}</strong>
+          </div>
+
+          <div style="
+            padding:13px;
+            background:#211136;
+            border-radius:9px;
+          ">
+            <small style="color:#cbb5ff">Rating Gained</small>
+            <strong style="
+              display:block;
+              font-size:22px;
+              margin-top:6px;
+              color:#55dfa0;
+            ">+${gained}</strong>
+          </div>
+
+          <div style="
+            padding:13px;
+            background:#211136;
+            border-radius:9px;
+          ">
+            <small style="color:#cbb5ff">Rating Lost</small>
+            <strong style="
+              display:block;
+              font-size:22px;
+              margin-top:6px;
+              color:#ff737d;
+            ">−${lost}</strong>
+          </div>
+        </div>
+
+        <div style="
+          background:#211136;
+          border-radius:10px;
+          padding:12px;
+        ">
+          <h4 style="margin-bottom:10px">
+            Rating Progress
+          </h4>
+
+          <svg viewBox="0 0 ${width} ${height}"
+               style="width:100%;height:auto;overflow:visible">
+
+            <line x1="${padding}" y1="25"
+                  x2="${width-padding}" y2="25"
+                  stroke="#49315f" stroke-width="1"/>
+
+            <line x1="${padding}" y1="75"
+                  x2="${width-padding}" y2="75"
+                  stroke="#49315f" stroke-width="1"/>
+
+            <line x1="${padding}" y1="125"
+                  x2="${width-padding}" y2="125"
+                  stroke="#49315f" stroke-width="1"/>
+
+            <polygon points="${area}"
+                     fill="#922de2"
+                     opacity="0.18"/>
+
+            <polyline points="${polyline}"
+                      fill="none"
+                      stroke="#f044ad"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"/>
+
+            <circle cx="${lastPoint.x}"
+                    cy="${lastPoint.y}"
+                    r="5"
+                    fill="#f044ad"
+                    stroke="#ffffff"
+                    stroke-width="2"/>
+
+            <text x="${lastPoint.x}"
+                  y="${Math.max(15,lastPoint.y-12)}"
+                  fill="#ffffff"
+                  font-size="11"
+                  text-anchor="middle">
+              ${lastPoint.point.rating}
+            </text>
+          </svg>
+
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            gap:5px;
+            font-size:10px;
+            color:#cbb5ff;
+          ">
+            <span>${dateLabel(points[0].date)}</span>
+            <span>${dateLabel(points[points.length-1].date)}</span>
+          </div>
+        </div>
+
+        <p style="
+          color:#9e89c1;
+          font-size:11px;
+          margin-top:12px;
+        ">
+          Based on recorded Lichess rating history.
+        </p>
+      `;
+
+      // HIGHLIGHT SELECTED BUTTONS
+      analytics.querySelectorAll("[data-perf]").forEach(button => {
+        const active = button.dataset.perf === selectedPerf;
+
+        button.style.background = active
+          ? "linear-gradient(120deg,#f044ad,#922de2)"
+          : "#281641";
+
+        button.style.color = active ? "#ffffff" : "#cbb5ff";
+      });
+
+      analytics.querySelectorAll("[data-period]").forEach(button => {
+        const active = button.dataset.period === selectedPeriod;
+
+        button.style.background = active
+          ? "linear-gradient(120deg,#f044ad,#922de2)"
+          : "#281641";
+
+        button.style.color = active ? "#ffffff" : "#cbb5ff";
+      });
+    }
+
+    // RATING CATEGORY BUTTONS
+    analytics.querySelectorAll("[data-perf]").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedPerf = button.dataset.perf;
+        renderAnalytics();
+      });
+    });
+
+    // TIME PERIOD BUTTONS
+    analytics.querySelectorAll("[data-period]").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedPeriod = button.dataset.period;
+        renderAnalytics();
+      });
+    });
+
+    renderAnalytics();
+
   } catch (error) {
-    console.error("Rating loading error:", error);
+    console.error("Rating analytics error:", error);
+
+    const analytics = document.getElementById(
+      "rating-analytics-card"
+    );
+
+    if (analytics) {
+      analytics.innerHTML = `
+        <h3>📈 Rating Analytics</h3>
+        <p style="
+          margin-top:12px;
+          color:#cbb5ff;
+          font-size:13px;
+        ">
+          Your ratings are available, but historical
+          analytics could not load at this time.
+        Please refresh and try again.
+        <br><br>
+        ${error.message}
+      </p>
+      `;
+    }
 
     if (lichessMessage) {
       lichessMessage.textContent =
-        "Lichess connected, but ratings could not load.";
+        "Connected: " + lichess.username +
+        " · Ratings loaded, history unavailable.";
     }
   }
-}
+    }
   // Show the correct screen
   function updateAuthUI(session) {
     if (session && session.user) {
