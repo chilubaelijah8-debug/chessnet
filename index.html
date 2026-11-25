@@ -1438,7 +1438,102 @@ async function loadConnectedAccounts(userId) {
           Based on recorded Lichess rating history.
         </p>
       `;
+      // ===== BIG RATING BANNER + SUMMARY =====
+      const periodNet = perf => {
+        const all = getPerfHistory(perf);
+        if (!all.length) return null;
 
+        let pts = all;
+        if (cutoff) {
+          const before = all.filter(p => p.date < cutoff);
+          const after = all.filter(p => p.date >= cutoff);
+          pts = [
+            ...(before.length ? [before[before.length - 1]] : []),
+            ...after
+          ];
+        }
+
+        const end = perfs[perf]?.rating ?? pts[pts.length - 1].rating;
+        return end - pts[0].rating;
+      };
+
+      const up = net > 0;
+      const down = net < 0;
+      const bannerColor = up ? "#55dfa0" : down ? "#ff737d" : "#cbb5ff";
+      const bannerArrow = up ? "▲" : down ? "▼" : "▬";
+      const bannerText = up
+        ? "Your rating is rising"
+        : down
+        ? "Your rating is dropping"
+        : "Your rating is steady";
+
+      const labels = { rapid: "Rapid", blitz: "Blitz", bullet: "Bullet" };
+      const improving = [];
+      const declining = [];
+
+      ["rapid", "blitz", "bullet"].forEach(type => {
+        const change = periodNet(type);
+        if (change > 0) improving.push(labels[type] + " (+" + change + ")");
+        if (change < 0) declining.push(labels[type] + " (" + change + ")");
+      });
+
+      const fromPeak = highest - endRating;
+
+      const summaryLines = [];
+      if (improving.length) summaryLines.push("📈 Improving in: " + improving.join(", "));
+      if (declining.length) summaryLines.push("📉 Dropping in: " + declining.join(", "));
+      if (!improving.length && !declining.length) {
+        summaryLines.push("No rating changes in this period.");
+      }
+      if (fromPeak > 0) {
+        summaryLines.push("🎯 You are " + fromPeak + " points below your peak " + selectedPerf + " rating.");
+      } else if (fromPeak === 0 && points.length > 1) {
+        summaryLines.push("🏆 You are at your peak " + selectedPerf + " rating!");
+      }
+
+      content.insertAdjacentHTML("afterbegin", `
+        <div style="
+          text-align:center;
+          padding:20px 12px;
+          margin-bottom:12px;
+          border-radius:14px;
+          background:#211136;
+          border:2px solid ${bannerColor};
+        ">
+          <div style="font-size:54px;line-height:1;color:${bannerColor}">
+            ${bannerArrow}
+          </div>
+
+          <div style="
+            font-size:30px;
+            font-weight:bold;
+            color:${bannerColor};
+            margin-top:8px;
+          ">
+            ${net > 0 ? "+" : ""}${net}
+          </div>
+
+          <div style="font-size:15px;margin-top:6px">
+            ${bannerText}
+          </div>
+
+          <small style="color:#cbb5ff">
+            ${selectedPerf.toUpperCase()} · ${periodName}
+          </small>
+        </div>
+
+        <div style="
+          padding:14px;
+          margin-bottom:12px;
+          border-radius:10px;
+          background:#281641;
+          font-size:13px;
+          line-height:1.7;
+          color:#e8dcff;
+        ">
+          ${summaryLines.join("<br>")}
+        </div>
+      `);
       // HIGHLIGHT SELECTED BUTTONS
       analytics.querySelectorAll("[data-perf]").forEach(button => {
         const active = button.dataset.perf === selectedPerf;
