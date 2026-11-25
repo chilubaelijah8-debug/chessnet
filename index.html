@@ -628,7 +628,50 @@ footer {
 }
 
 </style>
-
+<style>
+/* CHESSNET SPACE BOARD */
+#chess-board{
+  background:
+    radial-gradient(1px 1px at 20% 30%,#fff,transparent),
+    radial-gradient(1px 1px at 70% 60%,#cbb5ff,transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%,#fff,transparent),
+    radial-gradient(1px 1px at 85% 15%,#ff9ad8,transparent),
+    linear-gradient(145deg,#12082e,#2a0f4d);
+  border:3px solid #922de2;
+  border-radius:12px;
+  box-shadow:0 0 22px rgba(146,45,226,.55),0 0 6px rgba(240,68,173,.5);
+}
+.chess-square{position:relative;border:0;padding:0}
+.chess-square.chess-light{background:rgba(160,130,255,.30)}
+.chess-square.chess-dark{background:rgba(25,8,60,.60)}
+.chess-square.last-move{background:rgba(126,232,255,.32)}
+.chess-square.selected{background:rgba(240,68,173,.55)}
+.chess-square.in-check{background:radial-gradient(circle,rgba(255,60,90,.9),rgba(255,60,90,.15) 70%)}
+.chess-square.legal-move{box-shadow:none}
+.chess-square.legal-move::after{
+  content:"";position:absolute;width:26%;height:26%;border-radius:50%;
+  background:rgba(126,232,255,.7);box-shadow:0 0 10px #7ee8ff;
+}
+.chess-square.legal-move.capture::after{
+  width:84%;height:84%;background:transparent;
+  border:3px solid rgba(255,115,125,.9);box-shadow:none;
+}
+.piece{
+  line-height:1;pointer-events:none;
+  font-family:"Segoe UI Symbol","Noto Sans Symbols 2","DejaVu Sans",Arial,sans-serif;
+}
+.piece.w{color:#fff;text-shadow:0 0 6px #7ee8ff,0 0 14px #922de2}
+.piece.b{color:#0a0318;-webkit-text-stroke:1px #ff7ad0;text-shadow:0 0 8px #f044ad}
+.coord{
+  position:absolute;font-size:10px;font-weight:bold;color:#cbb5ff;
+  opacity:.75;pointer-events:none;font-family:Arial,sans-serif;
+}
+.coord.rank{top:3px;left:4px}
+.coord.file{bottom:2px;right:4px}
+#chess-captured{margin:8px auto;max-width:520px;font-size:13px}
+.cap-row{display:flex;gap:8px;align-items:center;min-height:26px;color:#cbb5ff}
+.cap-row .piece{font-size:20px}
+</style>
 </head>
 
 <body>
@@ -2564,25 +2607,25 @@ loadChessnetSettings();
 
   const game = new Chess();
 
-  const symbols = {
-    wK: "♔", wQ: "♕", wR: "♖",
-    wB: "♗", wN: "♘", wP: "♙",
-    bK: "♚", bQ: "♛", bR: "♜",
-    bB: "♝", bN: "♞", bP: "♟"
-  };
+  const glyphs = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+  const glyph = type => glyphs[type] + "\uFE0E";
 
   let selectedSquare = null;
   let legalMoves = [];
   let flipped = false;
+  let lastMove = null;
   let whiteTime = 300;
   let blackTime = 300;
   let timer = null;
   let timeExpired = false;
 
+  const capturedBox = document.createElement("div");
+  capturedBox.id = "chess-captured";
+  boardElement.insertAdjacentElement("afterend", capturedBox);
+
   function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const remaining = seconds % 60;
-
     return String(minutes).padStart(2, "0") + ":" +
       String(remaining).padStart(2, "0");
   }
@@ -2632,18 +2675,51 @@ loadChessnetSettings();
     }
 
     let output = "";
-
     for (let i = 0; i < moves.length; i += 2) {
       output += (Math.floor(i / 2) + 1) + ". " + moves[i];
-
-      if (moves[i + 1]) {
-        output += " " + moves[i + 1];
-      }
-
+      if (moves[i + 1]) output += " " + moves[i + 1];
       output += "\n";
     }
-
     historyElement.textContent = output;
+  }
+
+  function updateCaptured() {
+    const byWhite = [];
+    const byBlack = [];
+
+    game.history({ verbose: true }).forEach(m => {
+      if (m.captured) {
+        (m.color === "w" ? byWhite : byBlack).push(m.captured);
+      }
+    });
+
+    const order = { q: 1, r: 2, b: 3, n: 4, p: 5 };
+
+    const row = (label, list, cls) => {
+      const pieces = list
+        .sort((a, b) => order[a] - order[b])
+        .map(t => '<span class="piece ' + cls + '">' + glyph(t) + "</span>")
+        .join("");
+      return '<div class="cap-row"><small>' + label + "</small><span>" +
+        (pieces || "—") + "</span></div>";
+    };
+
+    capturedBox.innerHTML =
+      row("White captured", byWhite, "b") +
+      row("Black captured", byBlack, "w");
+  }
+
+  function kingSquare(color) {
+    const rows = game.board();
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = rows[r][c];
+        if (p && p.type === "k" && p.color === color) {
+          return "abcdefgh"[c] + (8 - r);
+        }
+      }
+    }
+    return null;
   }
 
   function renderBoard() {
@@ -2657,6 +2733,8 @@ loadChessnetSettings();
       ? [1, 2, 3, 4, 5, 6, 7, 8]
       : [8, 7, 6, 5, 4, 3, 2, 1];
 
+    const checkSquare = game.in_check() ? kingSquare(game.turn()) : null;
+
     ranks.forEach((rank, row) => {
       files.forEach((file, col) => {
         const square = file + rank;
@@ -2666,48 +2744,132 @@ loadChessnetSettings();
         button.type = "button";
         button.className = "chess-square " +
           ((row + col) % 2 === 0 ? "chess-light" : "chess-dark");
-
         button.dataset.square = square;
-        button.textContent = piece
-          ? symbols[piece.color + piece.type.toUpperCase()]
-          : "";
+
+        if (piece) {
+          const span = document.createElement("span");
+          span.className = "piece " + piece.color;
+          span.textContent = glyph(piece.type);
+          button.appendChild(span);
+        }
+
+        if (col === 0) {
+          const label = document.createElement("span");
+          label.className = "coord rank";
+          label.textContent = rank;
+          button.appendChild(label);
+        }
+
+        if (row === 7) {
+          const label = document.createElement("span");
+          label.className = "coord file";
+          label.textContent = file;
+          button.appendChild(label);
+        }
+
+        if (lastMove && (square === lastMove.from || square === lastMove.to)) {
+          button.classList.add("last-move");
+        }
+
+        if (square === checkSquare) {
+          button.classList.add("in-check");
+        }
 
         if (selectedSquare === square) {
           button.classList.add("selected");
         }
 
-        if (legalMoves.some(move => move.to === square)) {
+        const target = legalMoves.find(move => move.to === square);
+        if (target) {
           button.classList.add("legal-move");
+          if (piece || String(target.flags).includes("e")) {
+            button.classList.add("capture");
+          }
         }
 
         button.addEventListener("click", () => handleSquareClick(square));
-
         boardElement.appendChild(button);
       });
     });
   }
 
+  function makeMove(from, to, promotion) {
+    const move = game.move({ from: from, to: to, promotion: promotion || "q" });
+
+    selectedSquare = null;
+    legalMoves = [];
+
+    if (move) {
+      lastMove = { from: move.from, to: move.to };
+    }
+
+    renderBoard();
+    updateHistory();
+    updateCaptured();
+    updateStatus();
+  }
+
+  function askPromotion(from, to) {
+    const color = game.turn();
+
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:2000;display:flex;" +
+      "align-items:center;justify-content:center;" +
+      "background:rgba(5,0,20,.75);";
+
+    const box = document.createElement("div");
+    box.style.cssText =
+      "padding:18px;border-radius:16px;background:#1b1232;" +
+      "border:1px solid #69318a;text-align:center;";
+    box.innerHTML =
+      '<div style="margin-bottom:12px;color:#cbb5ff">Promote pawn to:</div>';
+
+    const choices = document.createElement("div");
+    choices.style.cssText = "display:flex;gap:10px;";
+
+    ["q", "r", "b", "n"].forEach(type => {
+      const choice = document.createElement("button");
+      choice.type = "button";
+      choice.style.cssText =
+        "width:60px;height:60px;font-size:38px;cursor:pointer;" +
+        "background:#2b1a58;border:1px solid #69318a;border-radius:10px;";
+
+      const span = document.createElement("span");
+      span.className = "piece " + color;
+      span.textContent = glyph(type);
+      choice.appendChild(span);
+
+      choice.addEventListener("click", () => {
+        overlay.remove();
+        makeMove(from, to, type);
+      });
+
+      choices.appendChild(choice);
+    });
+
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) overlay.remove();
+    });
+
+    box.appendChild(choices);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+
   function handleSquareClick(square) {
     if (timeExpired || game.game_over()) return;
 
-    if (selectedSquare &&
-        legalMoves.some(move => move.to === square)) {
+    const targetMoves = selectedSquare
+      ? legalMoves.filter(move => move.to === square)
+      : [];
 
-      const move = game.move({
-        from: selectedSquare,
-        to: square,
-        promotion: "q"
-      });
-
-      selectedSquare = null;
-      legalMoves = [];
-
-      if (move) {
-        renderBoard();
-        updateHistory();
-        updateStatus();
+    if (targetMoves.length) {
+      if (targetMoves.some(move => move.promotion)) {
+        askPromotion(selectedSquare, square);
+      } else {
+        makeMove(selectedSquare, square);
       }
-
       return;
     }
 
@@ -2715,10 +2877,7 @@ loadChessnetSettings();
 
     if (piece && piece.color === game.turn()) {
       selectedSquare = square;
-      legalMoves = game.moves({
-        square: square,
-        verbose: true
-      });
+      legalMoves = game.moves({ square: square, verbose: true });
     } else {
       selectedSquare = null;
       legalMoves = [];
@@ -2764,15 +2923,16 @@ loadChessnetSettings();
     selectedSquare = null;
     legalMoves = [];
     flipped = false;
+    lastMove = null;
     timeExpired = false;
 
     const selectedTime = Number(timeSelect.value) || 300;
-
     whiteTime = selectedTime;
     blackTime = selectedTime;
 
     updateClocks();
     updateHistory();
+    updateCaptured();
     updateStatus();
     renderBoard();
     startTimer();
@@ -2786,11 +2946,16 @@ loadChessnetSettings();
       if (timeExpired) return;
 
       game.undo();
+
+      const last = game.history({ verbose: true }).slice(-1)[0];
+      lastMove = last ? { from: last.from, to: last.to } : null;
+
       selectedSquare = null;
       legalMoves = [];
 
       renderBoard();
       updateHistory();
+      updateCaptured();
       updateStatus();
     });
 
