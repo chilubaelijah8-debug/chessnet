@@ -1126,22 +1126,27 @@ async function loadConnectedAccounts(userId) {
     let selectedPeriod = "30";
 
     // FIND CATEGORY HISTORY
-        function getPerfHistory(perf) {
-      const item = historyData.find(entry =>
-        String(entry.name || "").toLowerCase() === perf.toLowerCase()
-      );
+            function getPerfHistory(perf) {
+      const item = historyData.find(entry => {
+        const label = Array.isArray(entry) ? entry[0] : entry.name;
+        return String(label || "").toLowerCase() === perf.toLowerCase();
+      });
 
-      if (!item || !Array.isArray(item.points)) {
+      const raw = item
+        ? (Array.isArray(item) ? item[1] : item.points)
+        : null;
+
+      if (!Array.isArray(raw)) {
         return [];
       }
 
-      return item.points.map(point => ({
+      return raw.map(point => ({
         date: new Date(point[0], point[1], point[2]),
         rating: Number(point[3])
       })).filter(point =>
         Number.isFinite(point.rating)
       ).sort((a, b) => a.date - b.date);
-    }
+  }
 
     // RENDER ANALYTICS
     function renderAnalytics() {
