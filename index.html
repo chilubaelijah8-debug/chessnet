@@ -918,7 +918,6 @@ footer {
 
 // LOAD SAVED CHESS ACCOUNT CONNECTIONS + RATING ANALYTICS
 async function loadConnectedAccounts(userId) {
-  loadGameHistory(lichess.username);
   const { data, error } = await client
     .from("connected_chess_accounts")
     .select("provider, username, verified")
@@ -1774,59 +1773,7 @@ async function loadGameHistory(username) {
   render();
 }
 
-async function loadGameHistory(username) {
-  const container = document.getElementById("profile-lichess");
-  if (!container || !username) return;
 
-  let section = document.getElementById("lichess-game-history");
-
-  if (!section) {
-    section = document.createElement("div");
-    section.id = "lichess-game-history";
-    section.style.cssText = `
-      margin-top:20px;
-      padding:16px;
-      background:#111e30;
-      border:1px solid #263b56;
-      border-radius:16px;
-    `;
-    container.appendChild(section);
-  }
-
-  let filter = "all";
-  let limit = 20;
-
-  async function showGames() {
-    section.innerHTML = `
-      <h3 style="margin-bottom:12px">♟ Game History</h3>
-
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-        ${["all","rapid","blitz","bullet"].map(t => `
-          <button data-filter="${t}"
-            style="padding:8px 12px;border:1px solid #36516f;
-            border-radius:8px;background:${filter===t?"#2563eb":"#17263a"};
-            color:white">
-            ${t.toUpperCase()}
-          </button>
-        `).join("")}
-      </div>
-
-      <select id="history-limit"
-        style="background:#17263a;color:white;padding:9px;border-radius:8px;margin-bottom:12px">
-        <option value="20">Latest 20 games</option>
-        <option value="50">Latest 50 games</option>
-        <option value="100">Latest 100 games</option>
-      </select>
-
-      <div id="history-games">Loading games...</div>
-    `;
-
-    section.querySelectorAll("[data-filter]").forEach(button => {
-      button.onclick = () => {
-        filter = button.dataset.filter;
-        showGames();
-      };
-    });
 
     section.querySelector("#history-limit").value = limit;
 
