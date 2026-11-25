@@ -1626,7 +1626,8 @@ async function loadGameHistory(username) {
     container.appendChild(section);
   }
 
-  let selectedType = "all";
+  // null = list hidden
+  let selectedType = null;
   let gameLimit = 20;
 
   const safe = v => String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -1644,10 +1645,10 @@ async function loadGameHistory(username) {
           <button data-type="${t}" style="border:1px solid #69318a;
             background:${selectedType===t?"#922de2":"#281641"};color:white;
             border-radius:9px;padding:8px 12px;cursor:pointer">
-            ${t[0].toUpperCase()+t.slice(1)}
+            ${t[0].toUpperCase()+t.slice(1)} ${selectedType===t?"▲":"▼"}
           </button>`).join("")}
       </div>
-      <div style="margin-bottom:15px">
+      <div style="margin-bottom:15px;${selectedType ? "" : "display:none"}">
         <span style="font-size:13px;color:#cbb5ff">Games to load: </span>
         <select id="game-history-limit" style="background:#281641;color:white;
           border:1px solid #69318a;padding:8px;border-radius:8px">
@@ -1656,16 +1657,25 @@ async function loadGameHistory(username) {
           ).join("")}
         </select>
       </div>
-      <div id="game-history-list" style="color:#cbb5ff">Loading games...</div>
+      <div id="game-history-list" style="color:#cbb5ff">
+        ${selectedType ? "Loading games..." : "Tap a button above to show your games."}
+      </div>
     `;
 
+    // Tap a button to open it, tap it again to hide the list
     section.querySelectorAll("[data-type]").forEach(b => {
-      b.onclick = () => { selectedType = b.dataset.type; render(); };
+      b.onclick = () => {
+        selectedType = selectedType === b.dataset.type ? null : b.dataset.type;
+        render();
+      };
     });
+
     section.querySelector("#game-history-limit").onchange = e => {
       gameLimit = Number(e.target.value);
       render();
     };
+
+    if (!selectedType) return;
 
     const list = section.querySelector("#game-history-list");
 
