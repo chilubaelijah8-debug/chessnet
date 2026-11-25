@@ -1126,16 +1126,16 @@ async function loadConnectedAccounts(userId) {
     let selectedPeriod = "30";
 
     // FIND CATEGORY HISTORY
-    function getPerfHistory(perf) {
+        function getPerfHistory(perf) {
       const item = historyData.find(entry =>
-        String(entry[0]).toLowerCase() === perf.toLowerCase()
+        String(entry.name || "").toLowerCase() === perf.toLowerCase()
       );
 
-      if (!item || !Array.isArray(item[1])) {
+      if (!item || !Array.isArray(item.points)) {
         return [];
       }
 
-      return item[1].map(point => ({
+      return item.points.map(point => ({
         date: new Date(point[0], point[1], point[2]),
         rating: Number(point[3])
       })).filter(point =>
