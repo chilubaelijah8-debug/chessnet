@@ -2972,7 +2972,8 @@ loadChessnetSettings();
   function startTimer() {
     stopTimer();
 
-    timer = setInterval(() => {
+        timer = setInterval(() => {
+      if (game.history().length === 0) return;
       if (game.game_over() || timeExpired) {
         stopTimer();
         return;
@@ -3637,6 +3638,262 @@ body.game-lock{overflow:hidden}
 
   window.addEventListener("hashchange", () => {
     if (active) leave();
+  });
+})();
+</script>
+  <style>
+/* END OF GAME POPUP */
+.gameover-overlay{
+  position:fixed;inset:0;z-index:3000;display:flex;
+  align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,0,20,.8);
+}
+.gameover-box{
+  width:100%;max-width:340px;padding:24px 20px;border-radius:20px;
+  text-align:center;background:linear-gradient(160deg,#1b1232,#2a1450);
+  border:2px solid #922de2;box-shadow:0 0 30px rgba(146,45,226,.6);
+}
+.gameover-icon{font-size:54px;line-height:1}
+.gameover-title{font-size:26px;font-weight:bold;margin:10px 0 4px}
+.gameover-box.win .gameover-title{color:#55dfa0}
+.gameover-box.draw .gameover-title{color:#facc15}
+.gameover-reason{color:#cbb5ff;font-size:15px}
+.gameover-meta{margin-top:6px;color:#9e89c1;font-size:12px}
+.gameover-rating{
+  margin:14px 0;padding:10px;border-radius:10px;
+  background:#281641;color:#e8dcff;font-size:13px;
+}
+.gameover-buttons{display:flex;gap:10px}
+.gameover-buttons button{flex:1}
+</style>
+
+<script>
+// CHESSNET END OF GAME + SOUNDS
+(function () {
+  const status = document.getElementById("chess-status");
+  const historyBox = document.getElementById("chess-move-history");
+  const actions = document.querySelector(".chess-actions");
+  const rematchButton = document.getElementById("new-chess-game");
+
+  if (!status || !historyBox) return;
+
+  // ---------- SOUNDS ----------
+  let soundOn = true;
+  try {
+    soundOn = localStorage.getItem("chessnet_sound") !== "off";
+  } catch (e) {}
+
+  let audio = null;
+
+  function getAudio() {
+    if (!audio) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audio = new AC();
+    }
+    if (audio.state === "suspended") audio.resume();
+    return audio;
+  }
+
+  function tone(freq, start, duration, type, volume) {
+    const c = getAudio();
+    if (!c) return;
+
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    const t = c.currentTime + start;
+
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(volume || 0.2, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(t);
+    osc.stop(t + duration + 0.05);
+  }
+
+  function play(kind) {
+    if (!soundOn) return;
+
+    try {
+      if (kind === "move") {
+        tone(260, 0, 0.09, "triangle", 0.25);
+      } else if (kind === "capture") {
+        tone(170, 0, 0.12, "square", 0.18);
+        tone(340, 0.02, 0.08, "triangle", 0.15);
+      } else if (kind === "check") {
+        tone(660, 0, 0.1, "sine", 0.22);
+        tone(880, 0.1, 0.14, "sine", 0.22);
+      } else if (kind === "win") {
+        tone(523, 0, 0.15, "sine", 0.25);
+        tone(659, 0.15, 0.15, "sine", 0.25);
+        tone(784, 0.3, 0.3, "sine", 0.25);
+      } else if (kind === "draw") {
+        tone(440, 0, 0.2, "sine", 0.2);
+        tone(440, 0.25, 0.25, "sine", 0.2);
+      }
+    } catch (e) {}
+  }
+
+  // Sound on/off button
+  if (actions) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "btn btn-outline";
+
+    const label = () => {
+      toggle.textContent = soundOn ? "🔊 Sound: On" : "🔇 Sound: Off";
+    };
+
+    label();
+
+    toggle.addEventListener("click", () => {
+      soundOn = !soundOn;
+      try {
+        localStorage.setItem("chessnet_sound", soundOn ? "on" : "off");
+      } catch (e) {}
+      label();
+      play("move");
+    });
+
+    actions.appendChild(toggle);
+  }
+
+  // ---------- MOVE SOUNDS ----------
+  function moveTokens() {
+    const text = (historyBox.textContent || "").trim();
+    if (!text || /^No moves/.test(text)) return [];
+    return text.split(/\s+/).filter(t => t && !/^\d+\.$/.test(t));
+  }
+
+  let lastCount = 0;
+
+  new MutationObserver(() => {
+    const tokens = moveTokens();
+
+    if (tokens.length > lastCount) {
+      const san = tokens[tokens.length - 1];
+
+      if (san.includes("+") || san.includes("#")) play("check");
+      else if (san.includes("x")) play("capture");
+      else play("move");
+    }
+
+    lastCount = tokens.length;
+  }).observe(historyBox, {
+    childList: true,
+    characterData: true,
+    subtree: true
+  });
+
+  // ---------- END OF GAME POPUP ----------
+  let shown = false;
+  let overlay = null;
+
+  function closePopup() {
+    if (overlay) {
+      overlay.remove();
+      overlay = null;
+    }
+  }
+
+  function showResult(info) {
+    closePopup();
+
+    const moves = Math.ceil(moveTokens().length / 2);
+
+    overlay = document.createElement("div");
+    overlay.className = "gameover-overlay";
+
+    overlay.innerHTML =
+      '<div class="gameover-box ' + info.cls + '">' +
+        '<div class="gameover-icon">' + info.icon + "</div>" +
+        '<div class="gameover-title">' + info.title + "</div>" +
+        '<div class="gameover-reason">' + info.reason + "</div>" +
+        '<div class="gameover-meta">' + moves + " moves played</div>" +
+        '<div class="gameover-rating">Unrated local game · no rating change</div>' +
+        '<div class="gameover-buttons">' +
+          '<button type="button" class="btn" id="go-rematch">↻ Rematch</button>' +
+          '<button type="button" class="btn btn-outline" id="go-exit">Exit</button>' +
+        "</div>" +
+      "</div>";
+
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) closePopup();
+    });
+
+    overlay.querySelector("#go-rematch").addEventListener("click", () => {
+      closePopup();
+      if (rematchButton) rematchButton.click();
+    });
+
+    overlay.querySelector("#go-exit").addEventListener("click", () => {
+      closePopup();
+
+      const exitButton = document.querySelector(".gm-exit");
+      const inGameMode = document.querySelector(".chess-game-panel.game-mode");
+
+      if (exitButton && inGameMode) exitButton.click();
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  function checkStatus() {
+    const text = (status.textContent || "").trim();
+
+    // A new game has started
+    if (/^(White|Black) (to move|is in check)/.test(text)) {
+      shown = false;
+      closePopup();
+      return;
+    }
+
+    if (shown) return;
+
+    let info = null;
+    let m;
+
+    if ((m = /(White|Black) is checkmated\. (White|Black) wins!/.exec(text))) {
+      info = {
+        kind: "win", icon: "🏆", cls: "win",
+        title: m[2] + " wins!", reason: "By checkmate"
+      };
+    } else if ((m = /(White|Black) ran out of time\. (White|Black) wins!/.exec(text))) {
+      info = {
+        kind: "win", icon: "⏱", cls: "win",
+        title: m[2] + " wins!", reason: m[1] + " ran out of time"
+      };
+    } else if (/Draw by stalemate/.test(text)) {
+      info = {
+        kind: "draw", icon: "🤝", cls: "draw",
+        title: "Draw", reason: "Stalemate"
+      };
+    } else if (/The game is a draw/.test(text)) {
+      info = {
+        kind: "draw", icon: "🤝", cls: "draw",
+        title: "Draw", reason: "Draw by rule or repetition"
+      };
+    }
+
+    if (!info) return;
+
+    shown = true;
+
+    // Short pause so the final move can be seen and heard first
+    setTimeout(() => {
+      play(info.kind);
+      showResult(info);
+    }, 700);
+  }
+
+  new MutationObserver(checkStatus).observe(status, {
+    childList: true,
+    characterData: true,
+    subtree: true
   });
 })();
 </script>
