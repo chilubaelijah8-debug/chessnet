@@ -3446,6 +3446,199 @@ loadChessnetSettings();
   apply();
 })();
       </script>
-  
+  <style>
+/* GAME MODE (FULL SCREEN MATCH) */
+body.game-lock{overflow:hidden}
+.gm-head,.gm-bar{display:none}
+
+.chess-game-panel.game-mode{
+  position:fixed;inset:0;z-index:1500;margin:0;
+  padding:12px 12px 24px;border:0;border-radius:0;
+  background:#0c081b;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;
+}
+.game-mode > h3,
+.game-mode > p.muted:not(#chess-status),
+.game-mode > .chess-controls,
+.game-mode > .chess-clocks,
+.game-mode > .play-match-btn,
+.game-mode > h4,
+.game-mode > #chess-move-history{display:none}
+
+.game-mode > .gm-head,
+.game-mode > .gm-bar,
+.game-mode > #chess-board,
+.game-mode > #chess-captured{
+  width:100%;
+  max-width:560px;
+  max-width:max(260px,min(100%,calc(100vh - 330px)));
+  max-width:max(260px,min(100%,calc(100dvh - 330px)));
+}
+
+.game-mode > .gm-head{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;color:#cbb5ff;font-size:13px;
+}
+.game-mode > .gm-bar{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:9px 14px;margin:6px 0;border-radius:12px;
+  background:#1b1232;border:1px solid #492467;
+}
+.gm-bar.active{border-color:#f044ad;box-shadow:0 0 12px rgba(240,68,173,.5)}
+.gm-name{font-size:16px}
+.gm-rating{color:#cbb5ff;margin-left:4px}
+.gm-clock{
+  font-size:26px;font-weight:bold;font-variant-numeric:tabular-nums;
+  padding:4px 12px;border-radius:8px;background:#281641;
+}
+.gm-clock.low{color:#ff737d}
+.game-mode > #chess-board{margin:6px auto}
+.game-mode > #chess-status{margin:8px 0}
+.game-mode > .chess-actions{justify-content:center;margin-top:8px}
+</style>
+
+<script>
+// CHESSNET GAME MODE
+(function () {
+  const panel = document.querySelector(".chess-game-panel");
+  const board = document.getElementById("chess-board");
+  const status = document.getElementById("chess-status");
+  const controls = panel && panel.querySelector(".chess-controls");
+  const whiteClock = document.getElementById("white-clock");
+  const blackClock = document.getElementById("black-clock");
+  const timeSelect = document.getElementById("chess-time");
+  const newGameButton = document.getElementById("new-chess-game");
+
+  if (!panel || !board || !controls || !whiteClock || !blackClock) return;
+
+  const safe = v => String(v ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+
+  // Play Match button
+  const play = document.createElement("button");
+  play.type = "button";
+  play.className = "btn play-match-btn";
+  play.textContent = "▶ Play Match (Full Screen)";
+  play.style.cssText = "width:100%;margin-bottom:6px";
+  controls.insertAdjacentElement("afterend", play);
+
+  // Header with title and Exit button
+  const head = document.createElement("div");
+  head.className = "gm-head";
+  head.innerHTML =
+    '<span class="gm-title"></span>' +
+    '<button type="button" class="btn btn-outline gm-exit">✕ Exit</button>';
+  panel.insertBefore(head, panel.firstChild);
+
+  // Player bars: opponent above the board, you below
+  const top = document.createElement("div");
+  top.className = "gm-bar";
+  board.insertAdjacentElement("beforebegin", top);
+
+  const bottom = document.createElement("div");
+  bottom.className = "gm-bar";
+  const anchor = document.getElementById("chess-captured") || board;
+  anchor.insertAdjacentElement("afterend", bottom);
+
+  function timeCategory() {
+    const seconds = Number(timeSelect.value) || 300;
+    if (seconds < 180) return { name: "Bullet", index: 2 };
+    if (seconds < 480) return { name: "Blitz", index: 1 };
+    return { name: "Rapid", index: 0 };
+  }
+
+  function myName() {
+    const el = document.getElementById("profile-name");
+    return (el && el.textContent.trim()) || "You";
+  }
+
+  function myRating() {
+    const cards = document.querySelectorAll("#lichess-ratings-card strong");
+    const el = cards[timeCategory().index];
+    const value = el ? el.textContent.trim() : "";
+    return value && value !== "—" ? value : "—";
+  }
+
+  function clockSeconds(text) {
+    const m = /^(\d+):(\d+)$/.exec(text.trim());
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+
+  function fill(bar, player, isActive) {
+    bar.classList.toggle("active", isActive);
+
+    const seconds = clockSeconds(player.clock);
+    const low = seconds !== null && seconds <= 10;
+
+    bar.innerHTML =
+      "<div><strong class='gm-name'>" + safe(player.name) + "</strong>" +
+      "<small class='gm-rating'>(" + safe(player.rating) + ")</small></div>" +
+      "<span class='gm-clock" + (low ? " low" : "") + "'>" +
+      safe(player.clock) + "</span>";
+  }
+
+  function sync() {
+    const first = board.firstElementChild;
+    const flipped = !!first && first.dataset.square === "h1";
+
+    const text = status ? status.textContent : "";
+    const turn = /^White (to move|is in check)/.test(text) ? "w"
+      : /^Black (to move|is in check)/.test(text) ? "b"
+      : null;
+
+    const players = {
+      w: { name: myName(), rating: myRating(), clock: whiteClock.textContent },
+      b: { name: "Opponent", rating: "—", clock: blackClock.textContent }
+    };
+
+    const topColor = flipped ? "w" : "b";
+    const bottomColor = flipped ? "b" : "w";
+
+    fill(top, players[topColor], turn === topColor);
+    fill(bottom, players[bottomColor], turn === bottomColor);
+  }
+
+  let active = false;
+  let ticker = null;
+
+  function enter() {
+    active = true;
+
+    const option = timeSelect.options[timeSelect.selectedIndex];
+    head.querySelector(".gm-title").textContent =
+      "♟ " + timeCategory().name + " · " + (option ? option.text : "") +
+      " · Local game";
+
+    panel.classList.add("game-mode");
+    document.body.classList.add("game-lock");
+
+    if (newGameButton) newGameButton.click();
+
+    panel.scrollTop = 0;
+    sync();
+    clearInterval(ticker);
+    ticker = setInterval(sync, 300);
+  }
+
+  function leave() {
+    active = false;
+    panel.classList.remove("game-mode");
+    document.body.classList.remove("game-lock");
+    clearInterval(ticker);
+  }
+
+  play.addEventListener("click", enter);
+  head.querySelector(".gm-exit").addEventListener("click", leave);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && active) leave();
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (active) leave();
+  });
+})();
+</script>
 </body>
 </html>
