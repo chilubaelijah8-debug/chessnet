@@ -3936,5 +3936,989 @@ body.game-lock{overflow:hidden}
   });
 })();
 </script>
+  <style>
+/* PLAY ONLINE (LICHESS) */
+.online-btn{width:100%;margin-bottom:6px}
+.game-mode > .online-btn{display:none}
+body.online-lock{overflow:hidden}
+.online-overlay{
+  position:fixed;inset:0;z-index:2500;display:none;
+  flex-direction:column;align-items:center;
+  padding:12px 12px 28px;background:#0c081b;overflow-y:auto;
+}
+.online-overlay.open{display:flex}
+.online-inner{width:100%;max-width:560px}
+.online-inner #chess-board{margin:6px auto}
+.online-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;color:#cbb5ff;font-size:13px}
+.online-card{padding:18px;border-radius:14px;background:#1b1232;border:1px solid #492467}
+.online-option{display:block;width:100%;margin:8px 0;padding:14px;border-radius:12px;border:2px solid #492467;background:#211136;color:#fff;font-size:15px;cursor:pointer;text-align:left}
+.online-option.active{border-color:#f044ad;box-shadow:0 0 0 2px rgba(240,68,173,.4)}
+.online-check{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:13px;color:#e8dcff}
+.online-check input{width:20px;height:20px;accent-color:#f044ad;flex-shrink:0}
+.online-msg{margin-top:12px;font-size:13px;color:#cbb5ff;line-height:1.5}
+.online-msg.error{color:#ff737d}
+.online-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;margin:6px 0;border-radius:12px;background:#1b1232;border:1px solid #492467}
+.online-bar.active{border-color:#f044ad;box-shadow:0 0 12px rgba(240,68,173,.5)}
+.online-bar .nm{font-size:16px;font-weight:bold}
+.online-bar .rt{color:#cbb5ff;margin-left:6px;font-size:13px}
+.online-bar .ck{font-size:26px;font-weight:bold;font-variant-numeric:tabular-nums;padding:4px 12px;border-radius:8px;background:#281641}
+.online-bar .ck.low{color:#ff737d}
+.online-status{text-align:center;margin:8px 0;color:#e8dcff;font-size:14px}
+.online-draw{margin:8px 0;padding:10px;border-radius:10px;background:#281641;text-align:center;font-size:13px}
+.online-draw button{margin:6px 4px 0}
+.online-actions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.gameover-box.loss .gameover-title{color:#ff737d}
+</style>
+
+<script>
+// CHESSNET PLAY ONLINE (Lichess Board API)
+(function () {
+  const API = "https://lichess.org";
+  const TOKEN_KEY = "chessnet_lichess_token";
+
+  const panel = document.querySelector(".chess-game-panel");
+  const controls = panel && panel.querySelector(".chess-controls");
+  if (!panel || !controls || typeof Chess === "undefined") return;
+
+  const timeOptions = [
+    { label: "10 min · Rapid", time: 10, inc: 0 },
+    { label: "15 + 10 · Rapid", time: 15, inc: 10 },
+    { label: "30 min · Classical", time: 30, inc: 0 }
+  ];
+
+  const glyphs = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+  const glyph = t => glyphs[t] + "\uFE0E";
+
+  const FINISHED = [
+    "mate", "resign", "stalemate", "timeout", "draw", "outoftime",
+    "aborted", "noStart", "cheat", "unknownFinish", "variantEnd"
+  ];
+
+  let settings = { index: 0, rated: false };
+  let token = null;
+  let eventCtrl = null, seekCtrl = null, gameCtrl = null;
+  let seekTimer = null, tickTimer = null;
+  let G = null;
+  let popup = null;
+
+  // ---------- OVERLAY ----------
+  const overlay = document.createElement("div");
+  overlay.className = "online-overlay";
+  const inner = document.createElement("div");
+  inner.className = "online-inner";
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+
+  // ---------- SOUND ----------
+  let audio = null;
+
+  function beep(kind) {
+    try {
+      if (localStorage.getItem("chessnet_sound") === "off") return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audio = audio || new AC();
+      if (audio.state === "suspended") audio.resume();
+
+      const notes = kind === "check" ? [880, 1175] : kind === "capture" ? [340] : [520];
+      const peak = kind === "capture" ? 0.45 : 0.7;
+
+      notes.forEach((hz, i) => {
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        const t = audio.currentTime + i * 0.1;
+        osc.type = kind === "capture" ? "square" : "triangle";
+        osc.frequency.value = hz;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(peak, t + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        osc.connect(gain);
+        gain.connect(audio.destination);
+        osc.start(t);
+        osc.stop(t + 0.15);
+      });
+    } catch (e) {}
+  }
+
+  // ---------- HELPERS ----------
+  const auth = () => ({ Authorization: "Bearer " + token });
+
+  function getToken() {
+    try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+  }
+
+  async function readStream(url, options, onLine) {
+    const res = await fetch(url, options);
+
+    if (!res.ok) {
+      let text = "";
+      try { text = await res.text(); } catch (e) {}
+      let message = text;
+      try { message = JSON.parse(text).error || text; } catch (e) {}
+      const err = new Error(message || ("Error " + res.status));
+      err.status = res.status;
+      throw err;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      let index;
+      while ((index = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        if (!line) continue;
+
+        let data = null;
+        try { data = JSON.parse(line); } catch (e) {}
+        if (data) onLine(data);
+      }
+    }
+  }
+
+  async function post(path) {
+    const res = await fetch(API + path, { method: "POST", headers: auth() });
+
+    if (!res.ok) {
+      let text = "";
+      try { text = await res.text(); } catch (e) {}
+      const err = new Error(text || ("Error " + res.status));
+      err.status = res.status;
+      throw err;
+    }
+
+    return res;
+  }
+
+  function abortAll() {
+    clearTimeout(seekTimer);
+    clearInterval(tickTimer);
+
+    [eventCtrl, seekCtrl, gameCtrl].forEach(ctrl => {
+      if (ctrl) {
+        try { ctrl.abort(); } catch (e) {}
+      }
+    });
+
+    eventCtrl = seekCtrl = gameCtrl = null;
+  }
+
+  function closePopup() {
+    if (popup) {
+      popup.remove();
+      popup = null;
+    }
+  }
+
+  function kingSquare(chess, color) {
+    const rows = chess.board();
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = rows[r][c];
+        if (p && p.type === "k" && p.color === color) {
+          return "abcdefgh"[c] + (8 - r);
+        }
+      }
+    }
+    return null;
+  }
+
+  function formatClock(ms) {
+    if (ms === null || ms === undefined) return "--:--";
+    const total = Math.ceil(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+
+  // ---------- SCREENS ----------
+  function openOverlay() {
+    overlay.dataset.board = localStorage.getItem("chessnet_board_theme") || "space";
+    overlay.dataset.pieces = localStorage.getItem("chessnet_piece_set") || "space";
+
+    overlay.classList.add("open");
+    document.body.classList.add("online-lock");
+
+    token = getToken();
+
+    if (token) {
+      renderSetup();
+    } else {
+      renderSetup(
+        'Your Lichess account is not connected for play yet. Go to Chess Accounts, tap "Reconnect Lichess" and approve "Play games with the board API".',
+        true
+      );
+    }
+  }
+
+  function closeOverlay() {
+    abortAll();
+    closePopup();
+    G = null;
+    inner.innerHTML = "";
+    overlay.classList.remove("open");
+    document.body.classList.remove("online-lock");
+  }
+
+  function renderSetup(message, isError) {
+    abortAll();
+    G = null;
+
+    inner.innerHTML =
+      '<div class="online-top"><span>🌐 Play Online · Lichess</span>' +
+      '<button type="button" class="btn btn-outline" id="on-exit">✕ Exit</button></div>' +
+      '<div class="online-card">' +
+        '<h3 style="margin-bottom:6px">Find an opponent</h3>' +
+        '<p class="muted" style="margin-bottom:10px">You will be matched with a real Lichess player. Lichess only allows Rapid and slower games here, and engine help is not allowed.</p>' +
+        timeOptions.map((o, i) =>
+          '<button type="button" class="online-option' + (i === settings.index ? " active" : "") +
+          '" data-index="' + i + '">' + o.label + "</button>"
+        ).join("") +
+        '<label class="online-check"><input type="checkbox" id="on-rated"' +
+          (settings.rated ? " checked" : "") + ">" +
+          "<span>Rated game (changes your real Lichess rating)</span></label>" +
+        '<button type="button" class="btn" id="on-find" style="width:100%">🔍 Find opponent</button>' +
+        '<p class="online-msg' + (isError ? " error" : "") + '" id="on-msg"></p>' +
+      "</div>";
+
+    if (message) inner.querySelector("#on-msg").textContent = message;
+
+    inner.querySelector("#on-exit").onclick = closeOverlay;
+
+    inner.querySelectorAll(".online-option").forEach(button => {
+      button.onclick = () => {
+        settings.index = Number(button.dataset.index);
+        inner.querySelectorAll(".online-option").forEach(b =>
+          b.classList.toggle("active", b === button)
+        );
+      };
+    });
+
+    inner.querySelector("#on-rated").onchange = e => {
+      settings.rated = e.target.checked;
+    };
+
+    inner.querySelector("#on-find").onclick = startSearch;
+  }
+
+  function renderSearching() {
+    const o = timeOptions[settings.index];
+
+    inner.innerHTML =
+      '<div class="online-top"><span>🌐 Play Online · Lichess</span></div>' +
+      '<div class="online-card" style="text-align:center">' +
+        '<div style="font-size:42px">🔍</div>' +
+        '<h3 style="margin:10px 0 4px">Looking for an opponent…</h3>' +
+        '<p class="muted">' + o.label + " · " + (settings.rated ? "Rated" : "Casual") + "</p>" +
+        '<p class="online-msg">Keep this screen open. The game starts automatically when someone accepts.</p>' +
+        '<button type="button" class="btn btn-outline" id="on-cancel" style="margin-top:14px">Cancel</button>' +
+      "</div>";
+
+    inner.querySelector("#on-cancel").onclick = () => renderSetup();
+  }
+
+  function handleApiError(err) {
+    let msg = "Could not reach Lichess. Please try again.";
+
+    if (err.status === 401 || err.status === 403) {
+      msg = 'Lichess did not accept the play permission. Go to Chess Accounts, tap "Reconnect Lichess" and approve "Play games with the board API".';
+    } else if (err.status === 429) {
+      msg = "Lichess is limiting requests. Wait a minute and try again.";
+    } else if (err.message) {
+      msg = "Lichess says: " + err.message;
+    }
+
+    renderSetup(msg, true);
+  }
+
+  // ---------- SEARCH ----------
+  function startSearch() {
+    token = getToken();
+
+    if (!token) {
+      renderSetup(
+        'Your Lichess account is not connected for play yet. Go to Chess Accounts, tap "Reconnect Lichess" and approve "Play games with the board API".',
+        true
+      );
+      return;
+    }
+
+    closePopup();
+    abortAll();
+    renderSearching();
+    connectEvents();
+
+    // Short pause so an unfinished game can resume before we search
+    seekTimer = setTimeout(sendSeek, 800);
+  }
+
+  function connectEvents() {
+    eventCtrl = new AbortController();
+
+    readStream(
+      API + "/api/stream/event",
+      {
+        headers: Object.assign({ Accept: "application/x-ndjson" }, auth()),
+        signal: eventCtrl.signal
+      },
+      handleEvent
+    ).catch(err => {
+      if (err.name === "AbortError") return;
+      handleApiError(err);
+    });
+  }
+
+  function sendSeek() {
+    const o = timeOptions[settings.index];
+    seekCtrl = new AbortController();
+
+    const body = new URLSearchParams({
+      time: String(o.time),
+      increment: String(o.inc),
+      rated: settings.rated ? "true" : "false",
+      variant: "standard",
+      color: "random"
+    });
+
+    readStream(
+      API + "/api/board/seek",
+      {
+        method: "POST",
+        headers: Object.assign(
+          { "Content-Type": "application/x-www-form-urlencoded" },
+          auth()
+        ),
+        body: body,
+        signal: seekCtrl.signal
+      },
+      function () {}
+    ).catch(err => {
+      if (err.name === "AbortError") return;
+      handleApiError(err);
+    });
+  }
+
+  function handleEvent(ev) {
+    if (ev.type !== "gameStart" || !ev.game) return;
+
+    const variant = ev.game.variant && ev.game.variant.key;
+    if (variant && variant !== "standard") return;
+
+    const id = ev.game.gameId || ev.game.id;
+    if (G && G.id === id) return;
+
+    startGame(ev.game);
+  }
+
+  // ---------- GAME ----------
+  function startGame(info) {
+    clearTimeout(seekTimer);
+    clearInterval(tickTimer);
+
+    if (seekCtrl) {
+      try { seekCtrl.abort(); } catch (e) {}
+      seekCtrl = null;
+    }
+    if (gameCtrl) {
+      try { gameCtrl.abort(); } catch (e) {}
+      gameCtrl = null;
+    }
+
+    const id = info.gameId || info.id;
+    const myColor = info.color === "black" ? "b" : "w";
+    const oppColor = myColor === "w" ? "b" : "w";
+
+    G = {
+      id: id,
+      myColor: myColor,
+      chess: new Chess(),
+      moves: [],
+      serverMoves: [],
+      lastMove: null,
+      lastVerbose: null,
+      selected: null,
+      legal: [],
+      clocks: { w: null, b: null, at: Date.now() },
+      status: "started",
+      winner: null,
+      over: false,
+      ready: false,
+      rated: !!info.rated,
+      drawOffered: false,
+      oppGone: false,
+      players: { w: {}, b: {} },
+      refs: {}
+    };
+
+    if (info.opponent) {
+      G.players[oppColor] = {
+        name: info.opponent.username || info.opponent.id,
+        rating: info.opponent.rating
+      };
+    }
+
+    renderGame();
+    openGameStream(id);
+    tickTimer = setInterval(updateBars, 250);
+  }
+
+  function openGameStream(id) {
+    gameCtrl = new AbortController();
+
+    readStream(
+      API + "/api/board/game/stream/" + id,
+      {
+        headers: Object.assign({ Accept: "application/x-ndjson" }, auth()),
+        signal: gameCtrl.signal
+      },
+      handleGameLine
+    ).catch(err => {
+      if (err.name === "AbortError") return;
+      if (G && !G.over) {
+        setStatus("Connection lost. Close this screen and tap Play Online again to resume.");
+      }
+    });
+  }
+
+  function playerName(p) {
+    if (!p) return "Anonymous";
+    const name = p.name || p.id || (p.aiLevel ? "Computer" : "Anonymous");
+    return p.title ? p.title + " " + name : name;
+  }
+
+  function handleGameLine(line) {
+    if (!G) return;
+
+    if (line.type === "gameFull") {
+      G.rated = !!line.rated;
+
+      ["white", "black"].forEach(side => {
+        const p = line[side] || {};
+        G.players[side === "white" ? "w" : "b"] = {
+          name: playerName(p),
+          rating: p.rating,
+          provisional: p.provisional
+        };
+      });
+
+      const c = line.clock;
+      const clockText = c
+        ? " · " + Math.round(c.initial / 60000) + "+" + Math.round(c.increment / 1000)
+        : "";
+      const speed = line.speed ? line.speed.charAt(0).toUpperCase() + line.speed.slice(1) : "Online";
+
+      G.refs.title.textContent =
+        "♟ " + speed + clockText + " · " + (line.rated ? "Rated" : "Casual");
+
+      applyState(line.state);
+    } else if (line.type === "gameState") {
+      applyState(line);
+    } else if (line.type === "opponentGone") {
+      G.oppGone = !!line.gone;
+      refreshStatus();
+    }
+  }
+
+  function rebuild(moves) {
+    const c = new Chess();
+    let last = null;
+    let lastVerbose = null;
+
+    for (let i = 0; i < moves.length; i++) {
+      const uci = moves[i];
+      const m = c.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.length > 4 ? uci[4] : undefined
+      });
+      if (!m) break;
+      last = { from: m.from, to: m.to };
+      lastVerbose = m;
+    }
+
+    G.chess = c;
+    G.moves = moves.slice();
+    G.lastMove = last;
+    G.lastVerbose = lastVerbose;
+    G.selected = null;
+    G.legal = [];
+  }
+
+  function applyState(state) {
+    if (!G || !state) return;
+
+    const moves = state.moves ? state.moves.split(" ").filter(Boolean) : [];
+    const previous = G.moves.length;
+
+    G.serverMoves = moves.slice();
+    rebuild(moves);
+
+    G.clocks = { w: state.wtime, b: state.btime, at: Date.now() };
+    G.status = state.status;
+    G.winner = state.winner || null;
+    G.drawOffered = (G.myColor === "w" ? state.bdraw : state.wdraw) === true;
+
+    if (G.ready && moves.length > previous) {
+      beep(
+        G.chess.in_check() ? "check" :
+        (G.lastVerbose && G.lastVerbose.captured) ? "capture" : "move"
+      );
+    }
+    G.ready = true;
+
+    renderBoard();
+    updateBars();
+    refreshStatus();
+    updateDrawBanner();
+    renderActions();
+
+    if (FINISHED.indexOf(state.status) >= 0) finishGame();
+  }
+
+  function remaining(color) {
+    const base = G.clocks[color];
+    if (typeof base !== "number") return null;
+
+    let ms = base;
+    const running =
+      !G.over && G.status === "started" &&
+      G.moves.length >= 2 && G.chess.turn() === color;
+
+    if (running) ms -= Date.now() - G.clocks.at;
+    return Math.max(0, ms);
+  }
+
+  function renderGame() {
+    inner.innerHTML =
+      '<div class="online-top"><span id="on-title">♟ Online game</span></div>' +
+      '<div class="online-bar" id="on-top"><div><span class="nm"></span><span class="rt"></span></div><span class="ck">--:--</span></div>' +
+      '<div id="on-board-holder"></div>' +
+      '<div class="online-bar" id="on-bottom"><div><span class="nm"></span><span class="rt"></span></div><span class="ck">--:--</span></div>' +
+      '<p class="online-status" id="on-status"></p>' +
+      '<div class="online-draw" id="on-draw" style="display:none"></div>' +
+      '<div class="online-actions" id="on-actions"></div>';
+
+    const board = document.createElement("div");
+    // Uses the same id as the local board so it shares your board colours and piece style
+    board.id = "chess-board";
+    inner.querySelector("#on-board-holder").appendChild(board);
+
+    G.refs = {
+      board: board,
+      title: inner.querySelector("#on-title"),
+      top: inner.querySelector("#on-top"),
+      bottom: inner.querySelector("#on-bottom"),
+      status: inner.querySelector("#on-status"),
+      draw: inner.querySelector("#on-draw"),
+      actions: inner.querySelector("#on-actions")
+    };
+
+    renderBoard();
+    updateBars();
+    refreshStatus();
+    renderActions();
+  }
+
+  function fillBar(el, color) {
+    const p = G.players[color] || {};
+    const ms = remaining(color);
+    const active = !G.over && G.status === "started" && G.chess.turn() === color;
+
+    el.classList.toggle("active", active);
+    el.querySelector(".nm").textContent =
+      p.name || (color === G.myColor ? "You" : "Opponent");
+    el.querySelector(".rt").textContent =
+      p.rating ? "(" + p.rating + (p.provisional ? "?" : "") + ")" : "";
+
+    const ck = el.querySelector(".ck");
+    ck.textContent = formatClock(ms);
+    ck.classList.toggle("low", ms !== null && ms <= 10000 && !G.over);
+  }
+
+  function updateBars() {
+    if (!G || !G.refs.top) return;
+    const oppColor = G.myColor === "w" ? "b" : "w";
+    fillBar(G.refs.top, oppColor);
+    fillBar(G.refs.bottom, G.myColor);
+  }
+
+  function setStatus(text) {
+    if (G && G.refs.status) G.refs.status.textContent = text;
+  }
+
+  function refreshStatus() {
+    if (!G || G.over) return;
+
+    const myTurn = G.chess.turn() === G.myColor;
+    const side = G.myColor === "w" ? "White" : "Black";
+    let text;
+
+    if (G.oppGone) text = "Your opponent disconnected. Waiting for them to return…";
+    else if (G.moves.length === 0 && myTurn) text = "You are White. Make your first move.";
+    else if (G.moves.length === 0) text = "You are Black. Waiting for White to move…";
+    else if (myTurn) text = G.chess.in_check() ? "Your move. You are in check!" : "Your move (" + side + ")";
+    else text = "Opponent is thinking…";
+
+    setStatus(text);
+  }
+
+  function renderActions() {
+    const el = G.refs.actions;
+    el.innerHTML = "";
+
+    const add = (text, cls, fn) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = text;
+      b.onclick = fn;
+      el.appendChild(b);
+    };
+
+    if (G.over) {
+      add("↻ New game", "btn", startSearch);
+      add("✕ Exit", "btn btn-outline", closeOverlay);
+      return;
+    }
+
+    add("½ Offer draw", "btn btn-outline", () => {
+      post("/api/board/game/" + G.id + "/draw/yes")
+        .then(() => setStatus("Draw offered."))
+        .catch(() => setStatus("Could not offer a draw right now."));
+    });
+
+    add(G.moves.length < 2 ? "✕ Abort" : "🏳 Resign", "btn btn-outline", () => {
+      if (G.moves.length < 2) {
+        post("/api/board/game/" + G.id + "/abort").catch(() => {});
+      } else if (confirm("Resign this game?")) {
+        post("/api/board/game/" + G.id + "/resign").catch(() => {});
+      }
+    });
+  }
+
+  function updateDrawBanner() {
+    const el = G.refs.draw;
+
+    if (G.over || !G.drawOffered) {
+      el.style.display = "none";
+      return;
+    }
+
+    el.style.display = "block";
+    el.innerHTML =
+      'Your opponent offers a draw<br>' +
+      '<button type="button" class="btn" id="on-draw-yes">Accept</button>' +
+      '<button type="button" class="btn btn-outline" id="on-draw-no">Decline</button>';
+
+    el.querySelector("#on-draw-yes").onclick = () => {
+      post("/api/board/game/" + G.id + "/draw/yes").catch(() => {});
+    };
+    el.querySelector("#on-draw-no").onclick = () => {
+      post("/api/board/game/" + G.id + "/draw/no").catch(() => {});
+      G.drawOffered = false;
+      updateDrawBanner();
+    };
+  }
+
+  // ---------- BOARD ----------
+  function renderBoard() {
+    const el = G.refs.board;
+    el.innerHTML = "";
+
+    const flipped = G.myColor === "b";
+    const files = flipped
+      ? ["h", "g", "f", "e", "d", "c", "b", "a"]
+      : ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const ranks = flipped
+      ? [1, 2, 3, 4, 5, 6, 7, 8]
+      : [8, 7, 6, 5, 4, 3, 2, 1];
+
+    const checkSquare = G.chess.in_check()
+      ? kingSquare(G.chess, G.chess.turn())
+      : null;
+
+    ranks.forEach((rank, row) => {
+      files.forEach((file, col) => {
+        const square = file + rank;
+        const piece = G.chess.get(square);
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chess-square " +
+          ((row + col) % 2 === 0 ? "chess-light" : "chess-dark");
+        button.dataset.square = square;
+
+        if (piece) {
+          const span = document.createElement("span");
+          span.className = "piece " + piece.color;
+          span.textContent = glyph(piece.type);
+          button.appendChild(span);
+        }
+
+        if (col === 0) {
+          const label = document.createElement("span");
+          label.className = "coord rank";
+          label.textContent = rank;
+          button.appendChild(label);
+        }
+
+        if (row === 7) {
+          const label = document.createElement("span");
+          label.className = "coord file";
+          label.textContent = file;
+          button.appendChild(label);
+        }
+
+        if (G.lastMove && (square === G.lastMove.from || square === G.lastMove.to)) {
+          button.classList.add("last-move");
+        }
+        if (square === checkSquare) button.classList.add("in-check");
+        if (G.selected === square) button.classList.add("selected");
+
+        const target = G.legal.find(m => m.to === square);
+        if (target) {
+          button.classList.add("legal-move");
+          if (piece || String(target.flags).indexOf("e") >= 0) {
+            button.classList.add("capture");
+          }
+        }
+
+        button.addEventListener("click", () => onSquareClick(square));
+        el.appendChild(button);
+      });
+    });
+  }
+
+  function onSquareClick(square) {
+    if (!G || G.over) return;
+    if (G.chess.turn() !== G.myColor) return;
+
+    const targets = G.selected ? G.legal.filter(m => m.to === square) : [];
+
+    if (targets.length) {
+      if (targets.some(m => m.promotion)) {
+        askPromotion(G.selected, square);
+      } else {
+        playMove(G.selected, square);
+      }
+      return;
+    }
+
+    const piece = G.chess.get(square);
+
+    if (piece && piece.color === G.myColor) {
+      G.selected = square;
+      G.legal = G.chess.moves({ square: square, verbose: true });
+    } else {
+      G.selected = null;
+      G.legal = [];
+    }
+
+    renderBoard();
+  }
+
+  function playMove(from, to, promotion) {
+    const m = G.chess.move({ from: from, to: to, promotion: promotion });
+    if (!m) return;
+
+    const uci = from + to + (promotion || "");
+
+    G.moves.push(uci);
+    G.lastMove = { from: m.from, to: m.to };
+    G.lastVerbose = m;
+    G.selected = null;
+    G.legal = [];
+
+    beep(G.chess.in_check() ? "check" : m.captured ? "capture" : "move");
+
+    renderBoard();
+    refreshStatus();
+    updateBars();
+    renderActions();
+
+    post("/api/board/game/" + G.id + "/move/" + uci).catch(() => {
+      if (!G) return;
+      rebuild(G.serverMoves);
+      renderBoard();
+      refreshStatus();
+      setStatus("That move was not accepted. Try again.");
+    });
+  }
+
+  function askPromotion(from, to) {
+    const color = G.myColor;
+
+    const picker = document.createElement("div");
+    picker.style.cssText =
+      "position:fixed;inset:0;z-index:3500;display:flex;" +
+      "align-items:center;justify-content:center;background:rgba(5,0,20,.75);";
+
+    const box = document.createElement("div");
+    box.style.cssText =
+      "padding:18px;border-radius:16px;background:#1b1232;" +
+      "border:1px solid #69318a;text-align:center;";
+    box.innerHTML = '<div style="margin-bottom:12px;color:#cbb5ff">Promote pawn to:</div>';
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:10px;";
+
+    ["q", "r", "b", "n"].forEach(type => {
+      const choice = document.createElement("button");
+      choice.type = "button";
+      choice.style.cssText =
+        "width:60px;height:60px;font-size:38px;cursor:pointer;" +
+        "background:#2b1a58;border:1px solid #69318a;border-radius:10px;";
+
+      const span = document.createElement("span");
+      span.className = "piece " + color;
+      span.textContent = glyph(type);
+      choice.appendChild(span);
+
+      choice.addEventListener("click", () => {
+        picker.remove();
+        playMove(from, to, type);
+      });
+
+      row.appendChild(choice);
+    });
+
+    picker.addEventListener("click", e => {
+      if (e.target === picker) picker.remove();
+    });
+
+    box.appendChild(row);
+    picker.appendChild(box);
+    document.body.appendChild(picker);
+  }
+
+  // ---------- GAME OVER ----------
+  function finishGame() {
+    if (!G || G.over) return;
+    G.over = true;
+
+    updateBars();
+    updateDrawBanner();
+    renderActions();
+
+    const mine = G.winner && ((G.winner === "white") === (G.myColor === "w"));
+    const s = G.status;
+    let info;
+
+    if (s === "aborted" || s === "noStart") {
+      info = { icon: "⚪", cls: "draw", title: "Game aborted", reason: "No result" };
+    } else if (G.winner) {
+      const reasons = {
+        mate: "By checkmate",
+        resign: mine ? "Your opponent resigned" : "You resigned",
+        outoftime: mine ? "Your opponent ran out of time" : "You ran out of time",
+        timeout: mine ? "Your opponent left the game" : "You left the game",
+        cheat: "Fair play decision"
+      };
+      info = {
+        icon: mine ? "🏆" : "💔",
+        cls: mine ? "win" : "loss",
+        title: mine ? "You won!" : "You lost",
+        reason: reasons[s] || "Game over"
+      };
+    } else {
+      info = {
+        icon: "🤝", cls: "draw", title: "Draw",
+        reason: s === "stalemate" ? "Stalemate" : "Draw"
+      };
+    }
+
+    setStatus(info.title + " · " + info.reason);
+
+    const gameId = G.id;
+    const colorName = G.myColor === "w" ? "white" : "black";
+    const rated = G.rated;
+
+    setTimeout(() => {
+      if (!G || G.id !== gameId) return;
+      beep("check");
+      showPopup(info, rated, gameId, colorName);
+    }, 700);
+  }
+
+  function showPopup(info, rated, gameId, colorName) {
+    closePopup();
+
+    popup = document.createElement("div");
+    popup.className = "gameover-overlay";
+    popup.innerHTML =
+      '<div class="gameover-box ' + info.cls + '">' +
+        '<div class="gameover-icon">' + info.icon + "</div>" +
+        '<div class="gameover-title">' + info.title + "</div>" +
+        '<div class="gameover-reason">' + info.reason + "</div>" +
+        '<div class="gameover-rating" id="on-rating">' +
+          (rated ? "Checking your rating change…" : "Casual game · no rating change") +
+        "</div>" +
+        '<div class="gameover-buttons">' +
+          '<button type="button" class="btn" id="on-again">↻ New game</button>' +
+          '<button type="button" class="btn btn-outline" id="on-leave">Exit</button>' +
+        "</div>" +
+      "</div>";
+
+    popup.addEventListener("click", e => {
+      if (e.target === popup) closePopup();
+    });
+    popup.querySelector("#on-again").onclick = () => {
+      closePopup();
+      startSearch();
+    };
+    popup.querySelector("#on-leave").onclick = () => {
+      closePopup();
+      closeOverlay();
+    };
+
+    document.body.appendChild(popup);
+
+    if (rated) loadRating(gameId, colorName, popup.querySelector("#on-rating"));
+  }
+
+  async function loadRating(gameId, colorName, el) {
+    await new Promise(r => setTimeout(r, 1500));
+
+    try {
+      const res = await fetch(API + "/game/export/" + gameId, {
+        headers: { Accept: "application/json" }
+      });
+      if (!res.ok) throw new Error("export failed");
+
+      const data = await res.json();
+      const me = data.players && data.players[colorName];
+
+      if (me && typeof me.ratingDiff === "number" && typeof me.rating === "number") {
+        const diff = me.ratingDiff;
+        el.textContent =
+          "Rating " + me.rating + " → " + (me.rating + diff) +
+          " (" + (diff >= 0 ? "+" : "") + diff + ")";
+      } else {
+        el.textContent = "Rating change not available yet.";
+      }
+    } catch (e) {
+      el.textContent = "Rating change could not be loaded.";
+    }
+  }
+
+  // ---------- ENTRY BUTTON ----------
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn online-btn";
+  button.textContent = "🌐 Play Online (Lichess)";
+
+  const playMatch = panel.querySelector(".play-match-btn");
+  (playMatch || controls).insertAdjacentElement("afterend", button);
+
+  button.addEventListener("click", openOverlay);
+})();
+</script>
 </body>
 </html>
