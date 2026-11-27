@@ -2291,7 +2291,7 @@ async function loadWeaknessAnalysis(username) {
       response_type: "code",
       client_id: lichessClientId,
       redirect_uri: lichessRedirect,
-      scope: "board:play team:read",
+      scope: "board:play team:read challenge:write tournament:write",
       code_challenge_method: "S256",
       code_challenge: challenge,
       state: state
@@ -4976,5 +4976,470 @@ main .home-shortcuts small{display:block}
   });
 })();
 </script>
+  <!-- ===== CHESSNET TEAM HUB START ===== -->
+<style>
+#zed-hub .hub-box{background:#1b1232;border:1px solid #492467;border-radius:14px;padding:14px;margin-top:12px}
+#zed-hub .hub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#chessnet-groups #zed-hub button,#chessnet-groups #zed-hub .hub-btn{background:linear-gradient(120deg,#f044ad,#922de2);color:#fff;border:1px solid #f044ad;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:bold;text-decoration:none;cursor:pointer;display:inline-block}
+#chessnet-groups #zed-hub button.off{background:transparent;color:#cbb5ff}
+#chessnet-groups #zed-hub button.hub-open{width:100%;padding:16px;font-size:16px;margin-top:15px}
+#zed-hub select{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #69318a;background:#211136;color:#fff}
+#zed-hub label{display:block;font-size:13px;color:#cbb5ff;margin-top:8px}
+#zed-hub .hub-row{display:flex;align-items:center;gap:8px;background:#211136;border:1px solid #492467;border-radius:12px;padding:10px;margin-bottom:8px}
+#zed-hub .pos{width:38px;text-align:center;flex-shrink:0;font-weight:bold}
+#zed-hub .move{font-size:12px;margin-top:3px;white-space:nowrap}
+#zed-hub .up{color:#55dfa0}#zed-hub .down{color:#ff737d}#zed-hub .same{color:#9e89c1}
+#zed-hub .who{flex:1;min-width:0;overflow-wrap:anywhere}
+#zed-hub .who small{display:block;color:#cbb5ff;margin-top:3px}
+#zed-hub .acts{display:flex;flex-direction:column;gap:5px}
+#zed-hub .acts>*{text-align:center}
+#zed-hub .hub-msg{font-size:13px;color:#cbb5ff;margin:8px 0;line-height:1.5}
+.hub-pop{position:fixed;inset:0;z-index:3600;background:rgba(5,0,20,.85);display:flex;align-items:center;justify-content:center;padding:20px}
+.hub-pop>div{width:100%;max-width:340px;background:#1b1232;border:2px solid #922de2;border-radius:16px;padding:20px;text-align:center}
+.hub-pop select{width:100%;padding:12px;margin:8px 0;border-radius:7px;background:#211136;color:#fff;border:1px solid #69318a}
+.hub-pop .btn{margin:6px 4px;display:inline-block;text-decoration:none}
+.section-title i{color:#f044ad;margin-right:6px}
+</style>
+
+<script>
+(function () {
+  const TEAM = "zedchess-of-the-elites";
+  const API = "https://lichess.org";
+  const db = window.chessnetSupabase;
+  const section = document.getElementById("chessnet-groups");
+
+  // ---------- MATCHING HEADING ICONS ----------
+  [["tournaments", "trophy", "Tournaments"],
+   ["rankings", "chart-bar", "Group Rankings"],
+   ["chessnet-groups", "users", "Chessnet Groups"]].forEach(item => {
+    const h = document.querySelector("#" + item[0] + " > h2.section-title");
+    if (h) h.innerHTML = '<i class="ti ti-' + item[1] + '" aria-hidden="true"></i>' + item[2];
+  });
+
+  if (!section) return;
+
+  let role = null, tab = "rankings", perf = "rapid";
+  let members = [], statuses = {}, previous = {}, myLichess = "";
+  let loading = false, loadError = "", loadedAt = 0;
+
+  const safe = v => String(v ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const token = () => {
+    try { return localStorage.getItem("chessnet_lichess_token"); } catch (e) { return null; }
+  };
+  const headers = extra => {
+    const h = Object.assign({}, extra);
+    if (token()) h.Authorization = "Bearer " + token();
+    return h;
+  };
+  const ndjson = text => text.split("\n").filter(l => l.trim()).map(l => JSON.parse(l));
+  const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lusaka" });
+
+  // ---------- LAYOUT ----------
+  const hub = document.createElement("div");
+  hub.id = "zed-hub";
+  hub.innerHTML =
+    '<button type="button" class="hub-open"><i class="ti ti-users"></i> ZED Chess of the Elites ▾</button>' +
+    '<div class="hub-box" style="display:none"><div class="hub-tabs" id="hub-main"></div><div id="hub-body"></div></div>';
+  const intro = section.querySelector(":scope > p.muted");
+  intro.insertAdjacentElement("afterend", hub);
+
+  const box = hub.querySelector(".hub-box");
+  const body = hub.querySelector("#hub-body");
+
+  hub.querySelector(".hub-open").onclick = () => {
+    const opening = box.style.display === "none";
+    box.style.display = opening ? "block" : "none";
+    if (opening) {
+      render();
+      if (Date.now() - loadedAt > 60000) load();
+    }
+  };
+
+  function tabButtons(el, list, current, pick) {
+    el.innerHTML = "";
+    list.forEach(item => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = item[1];
+      if (item[0] !== current) b.className = "off";
+      b.onclick = () => pick(item[0]);
+      el.appendChild(b);
+    });
+  }
+
+  function render() {
+    const list = [["rankings", "Rankings"], ["tournaments", "Tournaments"]];
+    if (role === "owner") list.push(["admins", "Admins"]);
+    if (!list.some(i => i[0] === tab)) tab = "rankings";
+    tabButtons(hub.querySelector("#hub-main"), list, tab, v => { tab = v; render(); });
+    if (tab === "rankings") renderRankings();
+    else if (tab === "tournaments") renderTournaments();
+    else renderAdmins();
+  }
+
+  async function loadRole() {
+    role = null;
+    if (db) {
+      const { data } = await db.auth.getSession();
+      if (data.session) {
+        const result = await db.from("chessnet_team_admins").select("role")
+          .eq("user_id", data.session.user.id).maybeSingle();
+        role = result.data ? result.data.role : null;
+      }
+    }
+    if (box.style.display !== "none") render();
+  }
+
+  // ---------- LOAD TEAM ----------
+  async function loadStatuses() {
+    const ids = members.map(m => m.id);
+    const found = {};
+    for (let i = 0; i < ids.length; i += 100) {
+      const res = await fetch(API + "/api/users/status?withGameIds=true&ids=" +
+        ids.slice(i, i + 100).join(","));
+      if (!res.ok) throw new Error("Could not check who is online.");
+      (await res.json()).forEach(p => found[p.id] = p);
+    }
+    statuses = found;
+  }
+
+  function ranked(type) {
+    return members
+      .filter(m => Number.isFinite(m.perfs?.[type]?.rating) && m.perfs[type].games > 0)
+      .sort((a, b) => b.perfs[type].rating - a.perfs[type].rating || a.id.localeCompare(b.id));
+  }
+
+  async function loadHistory() {
+    previous = {};
+    if (!db) return;
+    for (const type of ["rapid", "blitz", "bullet"]) {
+      const result = await db.from("chessnet_rank_snapshots").select("day, ranks")
+        .eq("perf", type).lt("day", today()).order("day", { ascending: false }).limit(1);
+      if (result.error) throw new Error("Rank history: " + result.error.message);
+      previous[type] = result.data[0] || null;
+    }
+  }
+
+  // First admin visit of the day saves that day's positions
+  async function saveHistory() {
+    if (!db || !role || !members.length) return;
+    for (const type of ["rapid", "blitz", "bullet"]) {
+      const ranks = {};
+      ranked(type).forEach((m, i) => ranks[m.id] = i + 1);
+      if (!Object.keys(ranks).length) continue;
+      const result = await db.from("chessnet_rank_snapshots")
+        .insert({ day: today(), perf: type, ranks: ranks });
+      // 23505 = already saved today
+      if (result.error && result.error.code !== "23505") {
+        console.error("Rank save:", result.error.message);
+      }
+    }
+  }
+
+  async function load() {
+    if (loading) return;
+    loading = true;
+    loadError = "";
+    render();
+    try {
+      const res = await fetch(API + "/api/team/" + TEAM + "/users?full=true",
+        { headers: headers({ Accept: "application/x-ndjson" }) });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("Permission needed. Go to Chess Accounts and tap Reconnect Lichess.");
+      }
+      if (!res.ok) throw new Error("Lichess returned error " + res.status);
+      members = ndjson(await res.text());
+      loadedAt = Date.now();
+
+      try { await loadStatuses(); } catch (e) { statuses = {}; loadError = e.message; }
+
+      myLichess = "";
+      if (token()) {
+        const me = await fetch(API + "/api/account", { headers: headers() });
+        if (me.ok) myLichess = (await me.json()).id;
+      }
+
+      await loadRole();
+      await saveHistory();
+      await loadHistory();
+    } catch (e) {
+      loadError = e.message;
+    }
+    loading = false;
+    render();
+  }
+
+  // ---------- RANKINGS ----------
+  function renderRankings() {
+    body.innerHTML = '<div class="hub-tabs" id="hub-perf"></div>' +
+      '<button type="button" id="hub-refresh" class="off">↻ Refresh</button>' +
+      '<p class="hub-msg" id="hub-note"></p><div id="hub-list"></div>';
+    tabButtons(body.querySelector("#hub-perf"),
+      [["rapid", "Rapid"], ["blitz", "Blitz"], ["bullet", "Bullet"]], perf,
+      v => { perf = v; renderRankings(); });
+    body.querySelector("#hub-refresh").onclick = load;
+
+    const note = body.querySelector("#hub-note");
+    if (loading) { note.textContent = "Loading team..."; return; }
+
+    const old = previous[perf];
+    note.textContent = loadError || (old
+      ? "Arrows compare with positions saved on " + old.day + "."
+      : "No earlier positions saved yet. Arrows will appear later.");
+
+    const players = ranked(perf);
+    // Members without games in this category stay listed at the bottom
+    const unrated = members.filter(m => !players.includes(m));
+
+    body.querySelector("#hub-list").innerHTML = players.concat(unrated).map((m, i) => {
+      const isRanked = i < players.length;
+      let move = "";
+      if (isRanked && old) {
+        const before = old.ranks[m.id];
+        const diff = before - (i + 1);
+        if (!before) move = '<div class="move same">NEW</div>';
+        else if (diff > 0) move = '<div class="move up"><i class="ti ti-arrow-up"></i>' + diff + "</div>";
+        else if (diff < 0) move = '<div class="move down"><i class="ti ti-arrow-down"></i>' + (-diff) + "</div>";
+        else move = '<div class="move same">—</div>';
+      }
+
+      const s = statuses[m.id] || {};
+      const state = s.playing ? "♟ Playing" : s.online ? "● Online" : "● Offline";
+      const color = s.playing ? "#facc15" : s.online ? "#55dfa0" : "#9e89c1";
+      const profile = API + "/@/" + encodeURIComponent(m.username);
+
+      let actions = '<a class="hub-btn" target="_blank" rel="noopener" href="' + profile + '">View</a>';
+      if (s.playing && s.playingId) {
+        actions = '<a class="hub-btn" target="_blank" rel="noopener" href="' + API + "/" +
+          encodeURIComponent(s.playingId) + '">Watch</a>';
+      } else if (s.online && !s.playing && m.id !== myLichess) {
+        actions = '<button type="button" data-challenge="' + safe(m.username) + '">Challenge</button>' + actions;
+      }
+
+      return '<div class="hub-row"><div class="pos">' + (isRanked ? i + 1 : "–") + move + "</div>" +
+        '<div class="who"><strong>' + safe(m.username) + "</strong><small>" +
+        (isRanked ? m.perfs[perf].rating + (m.perfs[perf].prov ? "?" : "") : "No " + perf + " games") +
+        ' · <span style="color:' + color + '">' + state + "</span></small></div>" +
+        '<div class="acts">' + actions + "</div></div>";
+    }).join("");
+
+    body.querySelectorAll("[data-challenge]").forEach(b => {
+      b.onclick = () => challenge(b.dataset.challenge);
+    });
+  }
+
+  // Keep online status fresh while the leaderboard is open
+  setInterval(async () => {
+    if (document.hidden || loading || !members.length || tab !== "rankings" ||
+        box.style.display === "none" || !section.classList.contains("page-active")) return;
+    try { await loadStatuses(); renderRankings(); } catch (e) {}
+  }, 30000);
+
+  // ---------- CHALLENGE ----------
+  function challenge(name) {
+    const pop = document.createElement("div");
+    pop.className = "hub-pop";
+    pop.innerHTML = "<div><h3>Challenge " + safe(name) + "</h3>" +
+      '<select id="ch-time"><option value="60,0">Bullet 1+0</option><option value="180,2">Blitz 3+2</option>' +
+      '<option value="300,0">Blitz 5+0</option><option value="600,0" selected>Rapid 10+0</option>' +
+      '<option value="900,10">Rapid 15+10</option></select>' +
+      '<select id="ch-rated"><option value="false">Casual</option><option value="true">Rated</option></select>' +
+      '<p class="muted" id="ch-msg" style="margin:8px 0"></p><div id="ch-link"></div>' +
+      '<button type="button" class="btn" id="ch-send">Send challenge</button>' +
+      '<button type="button" class="btn btn-outline" id="ch-close">Cancel</button></div>';
+    document.body.appendChild(pop);
+
+    const msg = pop.querySelector("#ch-msg");
+    const send = pop.querySelector("#ch-send");
+    const close = pop.querySelector("#ch-close");
+    const controller = new AbortController();
+    let id = null, finished = false;
+
+    close.onclick = () => {
+      if (id && !finished) {
+        fetch(API + "/api/challenge/" + id + "/cancel", { method: "POST", headers: headers() })
+          .catch(() => {});
+      }
+      controller.abort();
+      pop.remove();
+    };
+
+    function handle(line) {
+      const data = JSON.parse(line);
+      const info = data.challenge || data;
+      if (info.id) {
+        id = info.id;
+        msg.textContent = "Waiting for " + name + " to accept. Keep this screen open.";
+      }
+      if (data.done) {
+        finished = true;
+        close.textContent = "Close";
+        send.style.display = "none";
+        if (data.done === "accepted") {
+          msg.textContent = "Challenge accepted! Open your game now.";
+          pop.querySelector("#ch-link").innerHTML = '<a class="btn" target="_blank" rel="noopener" href="' +
+            API + "/" + encodeURIComponent(id) + '">Open game on Lichess</a>';
+        } else {
+          msg.textContent = "Challenge " + data.done + ".";
+        }
+      }
+    }
+
+    send.onclick = async () => {
+      if (!token()) { msg.textContent = "Go to Chess Accounts and tap Reconnect Lichess first."; return; }
+      send.disabled = true;
+      msg.textContent = "Sending...";
+      const time = pop.querySelector("#ch-time").value.split(",");
+      try {
+        const res = await fetch(API + "/api/challenge/" + encodeURIComponent(name), {
+          method: "POST",
+          headers: headers({ Accept: "application/x-ndjson" }),
+          body: new URLSearchParams({
+            "clock.limit": time[0], "clock.increment": time[1],
+            rated: pop.querySelector("#ch-rated").value,
+            color: "random", keepAliveStream: "true"
+          }),
+          signal: controller.signal
+        });
+        if (!res.ok) throw new Error(await errorText(res));
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const part = await reader.read();
+          if (part.done) break;
+          buffer += decoder.decode(part.value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+          lines.filter(l => l.trim()).forEach(handle);
+        }
+        if (buffer.trim()) handle(buffer);
+        if (!finished) msg.textContent = "Connection closed. Check your challenges on Lichess.";
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          msg.textContent = e.message;
+          send.disabled = false;
+        }
+      }
+    };
+  }
+
+  async function errorText(res) {
+    if (res.status === 401 || res.status === 403) {
+      return "Lichess refused (" + res.status + "). Reconnect Lichess, and check that your account has permission for this.";
+    }
+    if (res.status === 429) return "Too many requests. Wait a minute and try again.";
+    const text = await res.text();
+    return "Lichess says: " + text.slice(0, 250);
+  }
+
+  // ---------- TOURNAMENTS ----------
+  function renderTournaments() {
+    let form = '<p class="hub-msg">Only the owner and admins can create tournaments here.</p>';
+    if (role) {
+      form = '<h3>Create tournament</h3>' +
+        '<label>Type</label><select id="t-type"><option value="swiss">Swiss</option><option value="arena">Arena</option></select>' +
+        '<label>Name</label><input id="t-name" maxlength="30" placeholder="ZED Friday Chess">' +
+        '<label>Time control</label><select id="t-time"><option value="60,0">1+0</option><option value="180,2">3+2</option>' +
+        '<option value="300,0" selected>5+0</option><option value="600,0">10+0</option><option value="900,10">15+10</option></select>' +
+        '<div id="t-swiss"><label>Rounds</label><select id="t-rounds"><option>3</option><option selected>5</option><option>7</option><option>9</option></select></div>' +
+        '<div id="t-arena" style="display:none"><label>Duration (minutes)</label><select id="t-minutes"><option>30</option><option selected>60</option><option>90</option><option>120</option></select></div>' +
+        '<label>Start date and time</label><input id="t-start" type="datetime-local">' +
+        '<label>Rating</label><select id="t-rated"><option value="true">Rated</option><option value="false">Casual</option></select>' +
+        '<button type="button" id="t-create">Create on Lichess</button><p class="hub-msg" id="t-msg"></p>';
+    }
+    body.innerHTML = form + '<h3 style="margin-top:16px">Team tournaments</h3><div id="t-list" class="hub-msg">Loading...</div>';
+
+    if (role) {
+      const $ = s => body.querySelector(s);
+      $("#t-type").onchange = e => {
+        $("#t-swiss").style.display = e.target.value === "swiss" ? "block" : "none";
+        $("#t-arena").style.display = e.target.value === "arena" ? "block" : "none";
+      };
+      $("#t-create").onclick = async () => {
+        const button = $("#t-create"), msg = $("#t-msg");
+        const type = $("#t-type").value;
+        const name = $("#t-name").value.trim();
+        const start = new Date($("#t-start").value).getTime();
+        const time = $("#t-time").value.split(",").map(Number);
+        if (name.length < 2) { msg.textContent = "Enter a tournament name."; return; }
+        if (!start || start < Date.now() + 120000) { msg.textContent = "Choose a start time at least 2 minutes from now."; return; }
+        if (!token()) { msg.textContent = "Reconnect Lichess first."; return; }
+        if (!confirm("Create this " + type + " tournament on Lichess?")) return;
+
+        const data = type === "swiss"
+          ? { name: name, "clock.limit": time[0], "clock.increment": time[1],
+              nbRounds: $("#t-rounds").value, startsAt: start, rated: $("#t-rated").value }
+          : { name: name, clockTime: time[0] / 60, clockIncrement: time[1],
+              minutes: $("#t-minutes").value, startDate: start, rated: $("#t-rated").value,
+              "conditions.teamMember.teamId": TEAM };
+
+        button.disabled = true;
+        msg.textContent = "Creating...";
+        try {
+          const res = await fetch(API + (type === "swiss" ? "/api/swiss/new/" + TEAM : "/api/tournament"),
+            { method: "POST", headers: headers(), body: new URLSearchParams(data) });
+          if (!res.ok) throw new Error(await errorText(res));
+          msg.textContent = "Tournament created!";
+          $("#t-name").value = "";
+          listTournaments();
+        } catch (e) {
+          msg.textContent = e.message;
+        }
+        button.disabled = false;
+      };
+    }
+    listTournaments();
+  }
+
+  async function listTournaments() {
+    const el = body.querySelector("#t-list");
+    if (!el) return;
+    try {
+      const results = await Promise.all(["swiss", "arena"].map(async type => {
+        const res = await fetch(API + "/api/team/" + TEAM + "/" + type + "?max=10",
+          { headers: headers({ Accept: "application/x-ndjson" }) });
+        if (!res.ok) throw new Error("Could not load tournaments (" + res.status + ").");
+        return ndjson(await res.text()).map(t => Object.assign(t, { kind: type }));
+      }));
+      const all = results.flat().sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
+      el.innerHTML = all.length ? all.map(t =>
+        '<div class="hub-row"><div class="who"><strong>' + safe(t.fullName || t.name) + "</strong><small>" +
+        (t.kind === "swiss" ? "Swiss" : "Arena") + " · " + safe(new Date(t.startsAt).toLocaleString()) +
+        '</small></div><a class="hub-btn" target="_blank" rel="noopener" href="' + API +
+        (t.kind === "swiss" ? "/swiss/" : "/tournament/") + encodeURIComponent(t.id) + '">Open</a></div>'
+      ).join("") : "No team tournaments yet.";
+    } catch (e) {
+      el.textContent = e.message;
+    }
+  }
+
+  // ---------- ADMINS (owner only) ----------
+  function renderAdmins() {
+    body.innerHTML = "<h3>Manage admins</h3>" +
+      '<p class="hub-msg">Enter their Chessnet login email. For Swiss tournaments, they must also be a team leader on Lichess with permission to manage tournaments.</p>' +
+      '<input id="a-email" type="email" placeholder="Admin email">' +
+      '<div class="hub-tabs"><button type="button" id="a-add">Add admin</button>' +
+      '<button type="button" id="a-remove" class="off">Remove admin</button></div><p class="hub-msg" id="a-msg"></p>';
+    const set = async add => {
+      const result = await db.rpc("chessnet_set_admin",
+        { p_email: body.querySelector("#a-email").value, p_add: add });
+      body.querySelector("#a-msg").textContent = result.error ? result.error.message : result.data;
+    };
+    body.querySelector("#a-add").onclick = () => set(true);
+    body.querySelector("#a-remove").onclick = () => set(false);
+  }
+
+  // Update admin access after login or logout
+  if (db) db.auth.onAuthStateChange(event => {
+    if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
+      setTimeout(loadRole, 0);
+    }
+  });
+})();
+</script>
+<!-- ===== CHESSNET TEAM HUB END ===== -->
+
 </body>
 </html>
