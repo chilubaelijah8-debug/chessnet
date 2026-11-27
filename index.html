@@ -2148,6 +2148,7 @@ async function loadWeaknessAnalysis(username) {
       loadConnectedAccounts(session.user.id);
     } else {
       accountSection.style.display = "block";
+            try { localStorage.removeItem("chessnet_lichess_token"); } catch (e) {}
       dashboard.style.display = "none";
       loggedInEmail.textContent = "";
     }
@@ -2290,6 +2291,7 @@ async function loadWeaknessAnalysis(username) {
       response_type: "code",
       client_id: lichessClientId,
       redirect_uri: lichessRedirect,
+            scope: "board:play",
       code_challenge_method: "S256",
       code_challenge: challenge,
       state: state
@@ -2339,7 +2341,9 @@ async function loadWeaknessAnalysis(username) {
       }
 
       const tokenData = await tokenResponse.json();
-
+      try {
+        localStorage.setItem("chessnet_lichess_token", tokenData.access_token);
+      } catch (e) {}
       const accountResponse = await fetch("https://lichess.org/api/account", {
         headers: {
           "Authorization": "Bearer " + tokenData.access_token
