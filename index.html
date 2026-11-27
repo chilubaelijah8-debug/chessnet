@@ -3299,8 +3299,7 @@ loadChessnetSettings();
     });
 
     hero.style.display = isHome ? "block" : "none";
-    shortcuts.style.display = isHome ? "block" : "none";
-
+        shortcuts.style.display = isHome ? "grid" : "none";
     const accountActions =
       document.querySelector(".home-account-actions");
 
@@ -4918,6 +4917,53 @@ body.online-lock{overflow:hidden}
   (playMatch || controls).insertAdjacentElement("afterend", button);
 
   button.addEventListener("click", openOverlay);
+})();
+</script>
+  <!-- CHESSNET 2x2 HOME + MATCHING ICONS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+
+<style>
+main .home-shortcuts{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+main .home-shortcuts .home-shortcut{
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  gap:10px;
+  min-height:150px;
+  padding:16px 8px;
+}
+main .home-shortcuts .home-shortcut .shortcut-icon{
+  width:52px;
+  height:52px;
+  font-size:28px;
+  color:#f044ad;
+  background:#492467;
+}
+main .home-shortcuts small{display:block}
+.main-nav a span i{font-style:normal;font-size:17px}
+</style>
+
+<script>
+// CHESSNET MATCHING ICONS
+(function () {
+  const icons = {
+    "#home": "home",
+    "#quick-match": "chess-knight",
+    "#chessnet-groups": "users",
+    "#tournaments": "trophy",
+    "#rankings": "chart-bar"
+  };
+
+  document.querySelectorAll(".main-nav a, .home-shortcut").forEach(link => {
+    const name = icons[link.getAttribute("href")];
+    const box = link.querySelector("span");
+    if (!name || !box) return;
+
+    box.innerHTML = '<i class="ti ti-' + name + '" aria-hidden="true"></i>';
+  });
 })();
 </script>
 </body>
