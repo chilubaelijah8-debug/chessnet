@@ -2291,7 +2291,7 @@ async function loadWeaknessAnalysis(username) {
       response_type: "code",
       client_id: lichessClientId,
       redirect_uri: lichessRedirect,
-            scope: "board:play",
+      scope: "board:play team:read",
       code_challenge_method: "S256",
       code_challenge: challenge,
       state: state
@@ -2475,18 +2475,28 @@ async function loadWeaknessAnalysis(username) {
       membersList.innerHTML = "";
 
       try {
+                let token = null;
+        try {
+          token = localStorage.getItem("chessnet_lichess_token");
+        } catch (e) {}
+
+        const headers = { "Accept": "application/x-ndjson" };
+        if (token) headers["Authorization"] = "Bearer " + token;
+
         const response = await fetch(
           "https://lichess.org/api/team/zedchess-of-the-elites/users?full=true",
-          {
-            headers: {
-              "Accept": "application/x-ndjson"
-            }
-          }
+          { headers: headers }
         );
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(
+              "Permission needed. Go to Chess Accounts, tap Reconnect Lichess, " +
+              "and use an account allowed to see this team's members."
+            );
+          }
           throw new Error("Lichess returned error " + response.status);
-        }
+  }
 
         const rawData = await response.text();
 
