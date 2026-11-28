@@ -5708,6 +5708,102 @@ main .home-shortcuts small{display:block}
   tidy();
 })();
 </script>
+<!-- CHESSNET EXTRA BOARDS AND PIECES -->
+<style>
+[data-board="purple"] #chess-board{--sq-light:#e6d7ff;--sq-dark:#7b4bb3;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#7b4bb3;border-color:#7b4bb3;box-shadow:none}
+[data-board="pink"] #chess-board{--sq-light:#ffd9ee;--sq-dark:#c2418a;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#c2418a;border-color:#c2418a;box-shadow:none}
+[data-board="midnight"] #chess-board{--sq-light:#7d8fb3;--sq-dark:#26344f;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#26344f;border-color:#26344f;box-shadow:none}
+[data-board="emerald"] #chess-board{--sq-light:#d8f3e3;--sq-dark:#2f7d5b;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#2f7d5b;border-color:#2f7d5b;box-shadow:none}
+[data-board="ice"] #chess-board{--sq-light:#f1f9ff;--sq-dark:#79a9cc;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#79a9cc;border-color:#79a9cc;box-shadow:none}
+[data-board="coral"] #chess-board{--sq-light:#ffe3d6;--sq-dark:#c8745a;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#c8745a;border-color:#c8745a;box-shadow:none}
+[data-board="walnut"] #chess-board{--sq-light:#d6b58a;--sq-dark:#6f4a2f;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#6f4a2f;border-color:#6f4a2f;box-shadow:none}
+[data-board="sand"] #chess-board{--sq-light:#f6e7c1;--sq-dark:#c19a5b;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#c19a5b;border-color:#c19a5b;box-shadow:none}
+[data-board="rose"] #chess-board{--sq-light:#fbe9ec;--sq-dark:#b9707f;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#b9707f;border-color:#b9707f;box-shadow:none}
+[data-board="lavender"] #chess-board{--sq-light:#f0ebff;--sq-dark:#9d8ac7;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#9d8ac7;border-color:#9d8ac7;box-shadow:none}
+[data-board="cherry"] #chess-board{--sq-light:#f3d9d3;--sq-dark:#8e3b46;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#8e3b46;border-color:#8e3b46;box-shadow:none}
+[data-board="marble"] #chess-board{--sq-light:#eceae6;--sq-dark:#8d8a86;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#8d8a86;border-color:#8d8a86;box-shadow:none}
+[data-board="copper"] #chess-board{--sq-light:#f2d3b3;--sq-dark:#a65f32;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#a65f32;border-color:#a65f32;box-shadow:none}
+[data-board="forest"] #chess-board{--sq-light:#cfd8b8;--sq-dark:#4f6b3a;--sq-last:rgba(255,235,59,.5);--sq-selected:rgba(20,110,200,.5);--sq-dot:rgba(20,20,20,.35);--sq-dot-glow:none;background:#4f6b3a;border-color:#4f6b3a;box-shadow:none}
+[data-pieces="neon"] .piece.w{color:#d9ffff;-webkit-text-stroke:1px #007c8a;text-shadow:0 0 8px #3ff}
+[data-pieces="neon"] .piece.b{color:#33001f;-webkit-text-stroke:1px #ff4fc3;text-shadow:0 0 8px #f3a}
+[data-pieces="royal"] .piece.w{color:#ffffff;-webkit-text-stroke:1px #6a22b5;text-shadow:none}
+[data-pieces="royal"] .piece.b{color:#3b0a70;-webkit-text-stroke:1px #e2c7ff;text-shadow:none}
+[data-pieces="fire"] .piece.w{color:#e8fbff;-webkit-text-stroke:1px #14628f;text-shadow:0 0 6px #6df}
+[data-pieces="fire"] .piece.b{color:#7a1500;-webkit-text-stroke:1px #ffb14a;text-shadow:0 0 7px #f60}
+[data-pieces="emerald"] .piece.w{color:#eafff2;-webkit-text-stroke:1px #126b45;text-shadow:none}
+[data-pieces="emerald"] .piece.b{color:#063d27;-webkit-text-stroke:1px #8ff0bd;text-shadow:none}
+[data-pieces="rose"] .piece.w{color:#ffe6df;-webkit-text-stroke:1px #9c4f45;text-shadow:none}
+[data-pieces="rose"] .piece.b{color:#4a1f26;-webkit-text-stroke:1px #f0a999;text-shadow:none}
+[data-pieces="ruby"] .piece.w{color:#fff4f4;-webkit-text-stroke:1px #8f1022;text-shadow:none}
+[data-pieces="ruby"] .piece.b{color:#8f1022;-webkit-text-stroke:1px #ffd0d6;text-shadow:none}
+[data-pieces="ocean"] .piece.w{color:#f0faff;-webkit-text-stroke:1px #175d99;text-shadow:none}
+[data-pieces="ocean"] .piece.b{color:#0b2f57;-webkit-text-stroke:1px #9bd4ff;text-shadow:none}
+[data-pieces="silver"] .piece.w{color:#f4f6f8;-webkit-text-stroke:1px #59636e;text-shadow:0 1px 3px #000}
+[data-pieces="silver"] .piece.b{color:#20262d;-webkit-text-stroke:1px #b9c3cd;text-shadow:0 1px 3px #000}
+[data-pieces="wooden"] .piece.w{color:#f8ddb0;-webkit-text-stroke:1px #6b431f;text-shadow:0 1px 2px #000}
+[data-pieces="wooden"] .piece.b{color:#4a2a12;-webkit-text-stroke:1px #e3bd8a;text-shadow:none}
+[data-pieces="candy"] .piece.w{color:#fff8a8;-webkit-text-stroke:1px #a0306f;text-shadow:none}
+[data-pieces="candy"] .piece.b{color:#c2187a;-webkit-text-stroke:1px #ffffff;text-shadow:none}
+</style>
+<script>
+(function () {
+  const panel = document.querySelector(".chess-game-panel");
+  const boardBox = document.getElementById("board-theme-options");
+  const pieceBox = document.getElementById("piece-set-options");
+  if (!panel || !boardBox || !pieceBox) return;
+
+  // [id, name, light square, dark square]
+  const extraBoards = [["purple", "Royal Purple", "#e6d7ff", "#7b4bb3"], ["pink", "Neon Pink", "#ffd9ee", "#c2418a"], ["midnight", "Midnight", "#7d8fb3", "#26344f"], ["emerald", "Emerald", "#d8f3e3", "#2f7d5b"], ["ice", "Ice", "#f1f9ff", "#79a9cc"], ["coral", "Coral", "#ffe3d6", "#c8745a"], ["walnut", "Dark Walnut", "#d6b58a", "#6f4a2f"], ["sand", "Desert Sand", "#f6e7c1", "#c19a5b"], ["rose", "Rose", "#fbe9ec", "#b9707f"], ["lavender", "Lavender", "#f0ebff", "#9d8ac7"], ["cherry", "Cherry", "#f3d9d3", "#8e3b46"], ["marble", "Marble", "#eceae6", "#8d8a86"], ["copper", "Zambian Copper", "#f2d3b3", "#a65f32"], ["forest", "Forest", "#cfd8b8", "#4f6b3a"]];
+  const extraPieces = [["neon", "Neon"], ["royal", "Royal"], ["fire", "Fire & Ice"], ["emerald", "Emerald"], ["rose", "Rose Gold"], ["ruby", "Ruby"], ["ocean", "Ocean"], ["silver", "Silver"], ["wooden", "Wooden"], ["candy", "Candy"]];
+  const BOARD = "chessnet_board_theme", PIECES = "chessnet_piece_set";
+
+  const read = key => { try { return localStorage.getItem(key) || "space"; } catch (e) { return "space"; } };
+  const save = (key, v) => { try { localStorage.setItem(key, v); } catch (e) {} };
+  const chosen = { board: read(BOARD), pieces: read(PIECES) };
+
+  function apply() {
+    panel.dataset.board = chosen.board;
+    panel.dataset.pieces = chosen.pieces;
+    [[boardBox, chosen.board], [pieceBox, chosen.pieces]].forEach(pair => {
+      pair[0].querySelectorAll(".theme-option").forEach(b =>
+        b.classList.toggle("active", b.dataset.id === pair[1]));
+    });
+  }
+
+  // New buttons
+  extraBoards.forEach(t => boardBox.insertAdjacentHTML("beforeend",
+    '<button type="button" class="theme-option" data-id="' + t[0] + '">' +
+    '<div class="theme-swatch" style="background:repeating-conic-gradient(' + t[2] +
+    ' 0% 25%,' + t[3] + ' 0% 50%) 50% / 50% 50%"></div>' + t[1] + "</button>"));
+
+  extraPieces.forEach(t => pieceBox.insertAdjacentHTML("beforeend",
+    '<button type="button" class="theme-option" data-id="' + t[0] + '" data-pieces="' + t[0] + '">' +
+    '<div class="piece-swatch"><span class="piece w">♞\uFE0E</span>' +
+    '<span class="piece b">♞\uFE0E</span></div>' + t[1] + "</button>"));
+
+  // One handler for old and new buttons. It replaces the old click actions.
+  [[boardBox, "board", BOARD], [pieceBox, "pieces", PIECES]].forEach(item => {
+    item[0].addEventListener("click", event => {
+      const button = event.target.closest(".theme-option");
+      if (!button) return;
+      event.stopPropagation();
+      chosen[item[1]] = button.dataset.id;
+      save(item[2], chosen[item[1]]);
+      apply();
+    }, true);
+  });
+
+  const reset = document.getElementById("reset-board-look");
+  if (reset) reset.addEventListener("click", () => {
+    chosen.board = chosen.pieces = "space";
+    save(BOARD, "space");
+    save(PIECES, "space");
+    apply();
+  });
+
+  apply();
+})();
+</script>
 
 </body>
 </html>
