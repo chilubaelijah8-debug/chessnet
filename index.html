@@ -5804,6 +5804,104 @@ main .home-shortcuts small{display:block}
   apply();
 })();
 </script>
+<!-- CHESSNET LICHESS PIECE SETS + BLITZ AND BULLET -->
+<style>
+.piece-credit{font-size:11px;line-height:1.6;color:#cbb5ff;margin-top:10px}
+.piece-credit a{color:#f044ad}
+.fast-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.fast-grid a{padding:12px 4px;text-align:center;text-decoration:none;color:#fff;background:#211136;border:2px solid #492467;border-radius:12px;font-weight:bold}
+</style>
+<script>
+(function () {
+  // PIECE ARTWORK (loaded from Lichess)
+  // id, name, author, licence
+  const sets = [
+    ["cburnett", "Colin Burnett", "Colin M.L. Burnett", "GPLv2+"],
+    ["merida", "Merida", "Armando Hernandez Marroquin", "GPLv2+"],
+    ["pirouetti", "Pirouetti", "pirouetti", "AGPLv3+"],
+    ["chessnut", "Chessnut", "Alexis Luengas", "Apache 2.0"]
+  ];
+  const BASE = "https://lichess1.org/assets/piece/";
+  const glyphType = { "♚": "k", "♛": "q", "♜": "r", "♝": "b", "♞": "n", "♟": "p" };
+  const url = (set, colour, type) => BASE + set + "/" + colour + type.toUpperCase() + ".svg";
+
+  // Label every piece with its type so it can receive the right picture
+  function label() {
+    document.querySelectorAll(".piece").forEach(el => {
+      const type = glyphType[el.textContent.charAt(0)];
+      if (type && el.dataset.t !== type) el.dataset.t = type;
+    });
+  }
+  new MutationObserver(label).observe(document.body, { childList: true, subtree: true });
+
+  // Use a set only when all 12 pictures load, so pieces never disappear
+  function loadSet(id) {
+    const jobs = [];
+    ["w", "b"].forEach(c => Object.values(glyphType).forEach(t => {
+      jobs.push(new Promise((done, fail) => {
+        const img = new Image();
+        img.onload = done;
+        img.onerror = fail;
+        img.src = url(id, c, t);
+      }));
+    }));
+    return Promise.all(jobs).then(() => {
+      let css = "";
+      ["w", "b"].forEach(c => Object.values(glyphType).forEach(t => {
+        css += '[data-pieces="' + id + '"] .piece.' + c + '[data-t="' + t + '"]{' +
+          "display:inline-block;width:1.22em;height:1.22em;overflow:hidden;" +
+          "color:transparent;-webkit-text-stroke:0;text-shadow:none;" +
+          'background:url("' + url(id, c, t) + '") center/contain no-repeat}\n';
+      }));
+      const style = document.createElement("style");
+      style.textContent = css;
+      document.head.appendChild(style);
+    });
+  }
+
+  const box = document.getElementById("piece-set-options");
+  if (box) {
+    box.insertAdjacentHTML("afterbegin", sets.map(set =>
+      '<button type="button" class="theme-option" data-id="' + set[0] + '" data-pieces="' + set[0] + '">' +
+      '<div class="piece-swatch"><span class="piece w">♞\uFE0E</span>' +
+      '<span class="piece b">♞\uFE0E</span></div>' + set[1] + "</button>").join(""));
+
+    let saved = "";
+    try { saved = localStorage.getItem("chessnet_piece_set") || ""; } catch (e) {}
+    const current = box.querySelector('[data-id="' + saved + '"]');
+    if (current) {
+      box.querySelectorAll(".theme-option").forEach(b => b.classList.toggle("active", b === current));
+    }
+
+    const credit = document.createElement("p");
+    credit.className = "piece-credit";
+    credit.innerHTML = "Piece artwork: " +
+      sets.map(s => s[1] + " by " + s[2] + " (" + s[3] + ")").join("; ") +
+      '. <a href="https://github.com/lichess-org/lila/blob/master/COPYING.md" target="_blank" rel="noopener">Licence details</a>';
+    box.insertAdjacentElement("afterend", credit);
+
+    sets.forEach(set => loadSet(set[0]).catch(() => {
+      const button = box.querySelector('[data-id="' + set[0] + '"]');
+      if (button) button.insertAdjacentHTML("beforeend", "<small><br>Pictures didn't load</small>");
+    }));
+  }
+  label();
+
+  // BLITZ AND BULLET: these open on Lichess
+  function addFast() {
+    const find = document.getElementById("on-find");
+    if (!find || document.getElementById("zed-fast")) return;
+    const group = (title, times) => '<h3 style="margin-top:14px">' + title + '</h3><div class="fast-grid">' +
+      times.map(t => '<a target="_blank" rel="noopener" href="https://lichess.org/#pool/' + t + '">' + t + "</a>").join("") +
+      "</div>";
+    find.closest(".online-card").insertAdjacentHTML("beforeend",
+      '<div id="zed-fast">' + group("Bullet", ["1+0", "2+1"]) +
+      group("Blitz", ["3+0", "3+2", "5+0", "5+3"]) +
+      '<p class="muted">Bullet and Blitz open on Lichess. Quick pairing there is rated, so it changes your rating. The Rated box above does not apply to these buttons.</p></div>');
+  }
+  new MutationObserver(addFast).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 
 </body>
 </html>
