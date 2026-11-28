@@ -2387,6 +2387,10 @@ async function loadWeaknessAnalysis(username) {
       lichessMessage.textContent =
         "Lichess account connected and verified: " +
         lichessAccount.username;
+            setTimeout(() => {
+        window.location.hash = "#player-profile";
+        window.location.reload();
+      }, 1200);
 
     } catch (error) {
       lichessMessage.textContent = "Connection failed: " + error.message;
@@ -6016,6 +6020,325 @@ if ("serviceWorker" in navigator) {
     button.onclick = share;
     actions.appendChild(button);
   }
+})();
+      </script>
+  <style>
+#account-section,#user-dashboard{display:none!important}
+.gate{position:fixed;inset:0;z-index:3800;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(5,0,20,.92);overflow-y:auto}
+.gate.open{display:flex}
+.gate-card{width:100%;max-width:400px;margin:auto;padding:22px 18px;border-radius:18px;background:linear-gradient(160deg,#1b1232,#2a1450);border:2px solid #922de2;box-shadow:0 0 30px rgba(146,45,226,.5);text-align:center}
+.gate-card h2{margin:6px 0 4px;font-size:22px}
+.gate-sub{color:#cbb5ff;font-size:13px;line-height:1.5;margin-bottom:14px}
+.gate-steps{display:flex;gap:6px;justify-content:center;margin:10px 0 12px}
+.gate-steps span{width:34px;height:5px;border-radius:3px;background:#492467}
+.gate-steps span.on{background:#f044ad}
+.gate-tabs{display:flex;gap:8px;margin-bottom:12px}
+.gate-tabs button{flex:1;padding:11px;border-radius:10px;border:1px solid #69318a;background:#211136;color:#cbb5ff;font-weight:bold;cursor:pointer}
+.gate-tabs button.on{background:linear-gradient(120deg,#f044ad,#922de2);color:#fff;border-color:#f044ad}
+.gate-card input[type=text],.gate-card input[type=email],.gate-card input[type=password]{width:100%;padding:13px;margin:6px 0;border-radius:9px;border:1px solid #69318a;background:#211136;color:#fff;font-size:16px}
+.gate-show{display:flex;align-items:center;gap:8px;font-size:13px;color:#cbb5ff;margin:6px 0 10px;text-align:left}
+.gate-show input{width:18px;height:18px;accent-color:#f044ad}
+.gate-go{width:100%;padding:14px;border:0;border-radius:10px;font-size:16px;font-weight:bold;color:#fff;cursor:pointer;background:linear-gradient(120deg,#f044ad,#922de2)}
+.gate-go:disabled{opacity:.6}
+.gate-msg{min-height:20px;margin-top:10px;font-size:13px;line-height:1.5;color:#ff9aa5}
+.gate-msg.ok{color:#55dfa0}
+.gate-link{display:block;width:100%;margin-top:12px;color:#cbb5ff;font-size:13px;background:none;border:0;cursor:pointer;text-decoration:underline}
+.gate-alt{display:block;margin-top:10px;color:#f044ad;font-size:13px;text-decoration:none}
+</style>
+
+<script>
+// CHESSNET EASY SIGN-UP AND LICHESS STEPS
+(function () {
+  const db = window.chessnetSupabase;
+  if (!db) return;
+
+  let mode = "signup";
+  let step = 0;
+  let busy = false;
+  let session = null;
+  const typed = { name: "", email: "" };
+
+  const gate = document.createElement("div");
+  gate.className = "gate";
+  const card = document.createElement("div");
+  card.className = "gate-card";
+  gate.appendChild(card);
+  document.body.appendChild(gate);
+
+  const flag = key => {
+    try { return sessionStorage.getItem(key) === "1"; } catch (e) { return false; }
+  };
+  const setFlag = key => {
+    try { sessionStorage.setItem(key, "1"); } catch (e) {}
+  };
+  const hasToken = () => {
+    try { return !!localStorage.getItem("chessnet_lichess_token"); } catch (e) { return false; }
+  };
+  const isOpen = () => gate.classList.contains("open");
+
+  function openGate() {
+    gate.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeGate() {
+    gate.classList.remove("open");
+    document.body.style.overflow = "";
+    step = 0;
+  }
+
+  const stepsBar = n =>
+    '<div class="gate-steps"><span class="on"></span><span class="' +
+    (n === 2 ? "on" : "") + '"></span></div>';
+
+  function friendly(error) {
+    const m = String((error && error.message) || "").toLowerCase();
+
+    if (m.includes("rate limit") || m.includes("too many")) {
+      return "Too many attempts. Wait a little while, or tap Log in if you already made an account.";
+    }
+    if (m.includes("invalid login")) {
+      return "Wrong email or password. Check them and try again.";
+    }
+    if (m.includes("already registered") || m.includes("already been registered")) {
+      return "This email already has an account. Tap Log in.";
+    }
+    if (m.includes("not confirmed")) {
+      return "Your email is not confirmed yet. Ask the Chessnet owner to confirm your account.";
+    }
+    if (m.includes("password")) {
+      return "Your password must have at least 6 characters.";
+    }
+    if (m.includes("valid email") || m.includes("invalid email")) {
+      return "Enter a valid email address.";
+    }
+    return (error && error.message) || "Something went wrong. Please try again.";
+  }
+
+  // ---------- STEP 1: ACCOUNT ----------
+  function renderAccount(note, ok) {
+    step = 1;
+    const signup = mode === "signup";
+
+    card.innerHTML =
+      '<div style="font-size:40px">♟</div>' +
+      stepsBar(1) +
+      "<h2>" + (signup ? "Create your account" : "Welcome back") + "</h2>" +
+      '<p class="gate-sub">' +
+        (signup ? "Step 1 of 2 · Takes less than a minute." : "Log in to continue.") + "</p>" +
+      '<div class="gate-tabs">' +
+        '<button type="button" data-mode="signup" class="' + (signup ? "on" : "") + '">Create account</button>' +
+        '<button type="button" data-mode="login" class="' + (signup ? "" : "on") + '">Log in</button>' +
+      "</div>" +
+      (signup ? '<input type="text" id="g-name" placeholder="Your chess name" autocomplete="nickname">' : "") +
+      '<input type="email" id="g-email" placeholder="Email address" autocomplete="email" inputmode="email">' +
+      '<input type="password" id="g-pass" placeholder="Password (6+ characters)" autocomplete="' +
+        (signup ? "new-password" : "current-password") + '">' +
+      '<label class="gate-show"><input type="checkbox" id="g-show"> Show password</label>' +
+      '<button type="button" class="gate-go" id="g-go">' + (signup ? "Create account" : "Log in") + "</button>" +
+      '<div class="gate-msg" id="g-msg"></div>' +
+      '<button type="button" class="gate-link" id="g-skip">Look around first</button>';
+
+    const nameInput = card.querySelector("#g-name");
+    const emailInput = card.querySelector("#g-email");
+    const msg = card.querySelector("#g-msg");
+
+    if (nameInput) {
+      nameInput.value = typed.name;
+      nameInput.oninput = () => { typed.name = nameInput.value; };
+    }
+    emailInput.value = typed.email;
+    emailInput.oninput = () => { typed.email = emailInput.value; };
+
+    if (note) {
+      msg.textContent = note;
+      if (ok) msg.classList.add("ok");
+    }
+
+    card.querySelectorAll("[data-mode]").forEach(button => {
+      button.onclick = () => {
+        mode = button.dataset.mode;
+        renderAccount();
+      };
+    });
+
+    card.querySelector("#g-show").onchange = event => {
+      card.querySelector("#g-pass").type = event.target.checked ? "text" : "password";
+    };
+
+    card.querySelector("#g-pass").addEventListener("keydown", event => {
+      if (event.key === "Enter") submit();
+    });
+
+    card.querySelector("#g-go").onclick = submit;
+
+    card.querySelector("#g-skip").onclick = () => {
+      setFlag("gate_skip");
+      closeGate();
+    };
+  }
+
+  async function submit() {
+    if (busy) return;
+
+    const nameInput = card.querySelector("#g-name");
+    const name = nameInput ? nameInput.value.trim() : "";
+    const email = card.querySelector("#g-email").value.trim();
+    const password = card.querySelector("#g-pass").value;
+    const msg = card.querySelector("#g-msg");
+    const go = card.querySelector("#g-go");
+
+    const show = (text, ok) => {
+      msg.textContent = text;
+      msg.className = "gate-msg" + (ok ? " ok" : "");
+    };
+
+    if (mode === "signup" && !name) return show("Enter a chess name.");
+    if (!email) return show("Enter your email address.");
+    if (password.length < 6) return show("Your password must have at least 6 characters.");
+
+    busy = true;
+    go.disabled = true;
+    show(mode === "signup" ? "Creating your account..." : "Logging in...", true);
+
+    try {
+      let result;
+
+      if (mode === "signup") {
+        result = await db.auth.signUp({
+          email: email,
+          password: password,
+          options: { data: { display_name: name } }
+        });
+      } else {
+        result = await db.auth.signInWithPassword({ email: email, password: password });
+      }
+
+      if (result.error) throw result.error;
+
+      const user = result.data && result.data.user;
+      if (mode === "signup" && user && Array.isArray(user.identities) && user.identities.length === 0) {
+        throw new Error("User already registered");
+      }
+
+      if (!result.data.session) {
+        mode = "login";
+        renderAccount(
+          "Almost done! Open the confirmation email we sent, tap the link, then come back and log in.",
+          true
+        );
+        return;
+      }
+
+      show("Success! One moment...", true);
+      setTimeout(check, 500);
+
+    } catch (error) {
+      show(friendly(error));
+    } finally {
+      busy = false;
+      go.disabled = false;
+    }
+  }
+
+  // ---------- STEP 2: LICHESS ----------
+  function renderLichess(reconnect) {
+    step = 2;
+
+    card.innerHTML =
+      '<div style="font-size:40px">🔗</div>' +
+      stepsBar(2) +
+      "<h2>" + (reconnect ? "Reconnect Lichess" : "Connect Lichess") + "</h2>" +
+      '<p class="gate-sub">Step 2 of 2 · ' +
+        (reconnect
+          ? "Reconnect once to turn on online play."
+          : "Link your free Lichess account to see your ratings and game history, and to play online.") +
+      "</p>" +
+      '<button type="button" class="gate-go" id="g-connect">Connect with Lichess</button>' +
+      '<p class="gate-sub" style="margin-top:12px">On the next page tap <strong>Authorize</strong>. You will come back here automatically.</p>' +
+      '<a class="gate-alt" target="_blank" rel="noopener" href="https://lichess.org/signup">No Lichess account? Create one free</a>' +
+      '<button type="button" class="gate-link" id="g-later">Do this later</button>';
+
+    card.querySelector("#g-connect").onclick = event => {
+      event.target.disabled = true;
+      event.target.textContent = "Opening Lichess...";
+
+      const real = document.getElementById("connect-lichess");
+      if (real) real.click();
+    };
+
+    card.querySelector("#g-later").onclick = () => {
+      setFlag("gate_later");
+      closeGate();
+    };
+  }
+
+  // ---------- DECIDE WHAT TO SHOW ----------
+  async function check() {
+    try {
+      const result = await db.auth.getSession();
+      session = result.data ? result.data.session : null;
+
+      if (!session) {
+        if (!flag("gate_skip")) {
+          if (!(step === 1 && isOpen())) renderAccount();
+          openGate();
+        }
+        return;
+      }
+
+      // A Lichess connection may be finishing right now
+      const note = document.getElementById("lichess-message");
+      if (note && /Verifying|connected and verified/.test(note.textContent)) {
+        closeGate();
+        return;
+      }
+
+      const rows = await db
+        .from("connected_chess_accounts")
+        .select("username")
+        .eq("user_id", session.user.id);
+
+      if (rows.error) {
+        closeGate();
+        return;
+      }
+
+      const linked = !!(rows.data && rows.data.length);
+
+      if ((!linked || !hasToken()) && !flag("gate_later")) {
+        if (!(step === 2 && isOpen())) renderLichess(linked);
+        openGate();
+      } else {
+        closeGate();
+      }
+    } catch (error) {
+      closeGate();
+    }
+  }
+
+  // The old "Create Account / Log In" link opens the new welcome card
+  document.addEventListener("click", event => {
+    const link = event.target.closest('a[href="#account-section"]');
+    if (!link || session) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    mode = "signup";
+    renderAccount();
+    openGate();
+  }, true);
+
+  db.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_IN") setTimeout(check, 400);
+    if (event === "SIGNED_OUT") {
+      session = null;
+      closeGate();
+    }
+  });
+
+  check();
 })();
       </script>
 </body>
