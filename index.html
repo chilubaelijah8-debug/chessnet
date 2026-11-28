@@ -6341,5 +6341,130 @@ if ("serviceWorker" in navigator) {
   check();
 })();
       </script>
+  <style>
+.install-pop{position:fixed;inset:0;z-index:4000;background:rgba(5,0,20,.85);display:flex;align-items:center;justify-content:center;padding:20px}
+.install-pop>div{width:100%;max-width:340px;background:#1b1232;border:2px solid #922de2;border-radius:16px;padding:20px;text-align:left}
+.install-pop h3{text-align:center;margin-bottom:6px}
+.install-pop ol{margin:12px 0 0 20px;font-size:14px;line-height:1.8;color:#e8dcff}
+.install-pop .note{margin-top:12px;font-size:12px;line-height:1.5;color:#cbb5ff}
+.install-pop .btn{display:block;width:100%;margin-top:14px;text-align:center}
+.home-account-actions button.install-home{background:linear-gradient(120deg,#f044ad,#922de2);color:#fff;font-size:13px;font-weight:bold;padding:10px 13px;border:0;border-radius:8px;cursor:pointer}
+</style>
+
+<script>
+// CHESSNET INSTALL BUTTON
+(function () {
+  let deferred = null;
+  let justInstalled = false;
+  const buttons = [];
+
+  function isInstalled() {
+    return justInstalled ||
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+  }
+
+  function refresh() {
+    buttons.forEach(b => {
+      b.style.display = isInstalled() ? "none" : "";
+    });
+  }
+
+  function help() {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    const steps = ios
+      ? [
+          "Open Chessnet in <strong>Safari</strong>.",
+          "Tap the <strong>Share</strong> icon (a square with an arrow).",
+          "Scroll down and tap <strong>Add to Home Screen</strong>.",
+          "Tap <strong>Add</strong>."
+        ]
+      : [
+          "Open Chessnet in <strong>Chrome</strong>.",
+          "Tap the <strong>⋮</strong> menu at the top right.",
+          "Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>).",
+          "Tap <strong>Install</strong>."
+        ];
+
+    const pop = document.createElement("div");
+    pop.className = "install-pop";
+
+    pop.innerHTML =
+      "<div>" +
+        "<h3>Install Chessnet</h3>" +
+        '<p class="note" style="text-align:center">Add Chessnet to your home screen like a normal app.</p>' +
+        "<ol>" + steps.map(s => "<li>" + s + "</li>").join("") + "</ol>" +
+        (ios ? "" : '<p class="note">On Samsung Internet: tap the menu, then <strong>Add page to</strong>, then <strong>Home screen</strong>.</p>') +
+        '<button type="button" class="btn">Got it</button>' +
+      "</div>";
+
+    pop.querySelector("button").onclick = () => pop.remove();
+    pop.addEventListener("click", e => {
+      if (e.target === pop) pop.remove();
+    });
+
+    document.body.appendChild(pop);
+  }
+
+  async function install() {
+    const dropdown = document.getElementById("profile-dropdown");
+    if (dropdown) dropdown.classList.remove("show");
+
+    if (deferred) {
+      const prompt = deferred;
+      deferred = null;
+
+      prompt.prompt();
+      try { await prompt.userChoice; } catch (e) {}
+      return;
+    }
+
+    help();
+  }
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferred = event;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferred = null;
+    justInstalled = true;
+    refresh();
+  });
+
+  // In the top menu, above Share and Log Out
+  const dropdown = document.getElementById("profile-dropdown");
+  const logout = document.getElementById("profile-logout");
+
+  if (dropdown && logout && !document.getElementById("install-menu")) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.id = "install-menu";
+    item.innerHTML = '<i class="ti ti-download" aria-hidden="true"></i> Install app';
+    item.onclick = install;
+
+    dropdown.insertBefore(item, document.getElementById("share-menu") || logout);
+    buttons.push(item);
+  }
+
+  // On the Home page, with the other quick buttons
+  const actions = document.querySelector(".home-account-actions");
+
+  if (actions && !actions.querySelector(".install-home")) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "install-home";
+    button.innerHTML = '<i class="ti ti-download" aria-hidden="true"></i> Install app';
+    button.onclick = install;
+
+    actions.insertBefore(button, actions.firstChild);
+    buttons.push(button);
+  }
+
+  refresh();
+})();
+</script>
 </body>
 </html>
