@@ -5663,6 +5663,51 @@ main .home-shortcuts small{display:block}
 })();
 </script>
 <!-- ===== CHESSNET TEAM HUB END ===== -->
+<!-- CHESSNET PROFILE ICONS -->
+<style>
+#player-profile h3 .zed-ic{color:#f044ad;margin-right:8px;font-size:1.2em;vertical-align:-2px}
+</style>
+<script>
+(function () {
+  const page = document.getElementById("player-profile");
+  if (!page) return;
+  const icon = name => '<i class="ti ti-' + name + ' zed-ic" aria-hidden="true"></i>';
+  const headings = [
+    ["#lichess-game-history > h3", "history", "Game History"],
+    ["#lichess-ratings-card > h3", "star", "My Lichess Ratings"],
+    ["#rating-analytics-card > h3", "chart-line", "Rating Analytics"],
+    ["#weakness-analysis-card > h3", "target", "Weakness Analysis"]
+  ];
+
+  function tidy() {
+    headings.forEach(item => {
+      const h = page.querySelector(item[0]);
+      if (h && !h.querySelector(".zed-ic")) h.innerHTML = icon(item[1]) + item[2];
+    });
+
+    // Search button inside Weakness Analysis
+    const button = page.querySelector("#run-weakness");
+    if (button && !button.querySelector(".ti")) {
+      button.innerHTML = '<i class="ti ti-search" aria-hidden="true"></i> Analyze my games';
+    }
+
+    // Small emojis in the rating summary
+    const content = page.querySelector("#analytics-content");
+    if (content) {
+      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const clean = node.nodeValue.replace(/(📈|📉|🎯|🏆) ?/gu, "");
+        if (clean !== node.nodeValue) node.nodeValue = clean;
+      }
+    }
+  }
+
+  // These cards load later and redraw, so keep watching
+  new MutationObserver(tidy).observe(page, { childList: true, subtree: true });
+  tidy();
+})();
+</script>
 
 </body>
 </html>
