@@ -5912,5 +5912,106 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+  <style>
+.share-pop{position:fixed;inset:0;z-index:4000;background:rgba(5,0,20,.85);display:flex;align-items:center;justify-content:center;padding:20px}
+.share-pop>div{width:100%;max-width:340px;background:#1b1232;border:2px solid #922de2;border-radius:16px;padding:20px;text-align:center}
+.share-pop .btn{display:block;width:100%;margin:10px 0 0;text-decoration:none;text-align:center}
+.share-pop p{font-size:13px;color:#cbb5ff;line-height:1.5;margin-top:12px;overflow-wrap:anywhere}
+.home-account-actions button.share-home{background:transparent;color:#f044ad;font-size:13px;padding:10px 13px;border:1px solid #492467;border-radius:8px;cursor:pointer}
+</style>
+
+<script>
+// CHESSNET SHARE BUTTON
+(function () {
+  const url = location.origin + "/";
+  const text =
+    "Join me on Chessnet ♟ Chess communities, groups and rating tracking. " +
+    "Open the link, then tap ⋮ → Install app to add it to your phone:";
+
+  function popup() {
+    const pop = document.createElement("div");
+    pop.className = "share-pop";
+
+    const box = document.createElement("div");
+    box.innerHTML = "<h3>Share Chessnet</h3>";
+
+    const whatsapp = document.createElement("a");
+    whatsapp.className = "btn";
+    whatsapp.target = "_blank";
+    whatsapp.rel = "noopener";
+    whatsapp.href = "https://wa.me/?text=" + encodeURIComponent(text + " " + url);
+    whatsapp.textContent = "Share on WhatsApp";
+
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "btn btn-outline";
+    copy.textContent = "Copy link";
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        copy.textContent = "Copied!";
+      } catch (e) {
+        prompt("Copy this link:", url);
+      }
+    };
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "btn btn-outline";
+    close.textContent = "Close";
+    close.onclick = () => pop.remove();
+
+    const link = document.createElement("p");
+    link.textContent = url;
+
+    box.append(whatsapp, copy, close, link);
+    pop.appendChild(box);
+    pop.addEventListener("click", e => {
+      if (e.target === pop) pop.remove();
+    });
+    document.body.appendChild(pop);
+  }
+
+  async function share() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Chessnet", text: text, url: url });
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+    }
+    popup();
+  }
+
+  // In the profile menu, above Log Out
+  const dropdown = document.getElementById("profile-dropdown");
+  const logout = document.getElementById("profile-logout");
+
+  if (dropdown && logout && !document.getElementById("share-menu")) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.id = "share-menu";
+    item.innerHTML = '<i class="ti ti-share" aria-hidden="true"></i> Share Chessnet';
+    item.onclick = () => {
+      dropdown.classList.remove("show");
+      share();
+    };
+    dropdown.insertBefore(item, logout);
+  }
+
+  // On the Home page, next to Create Account / Connect Lichess
+  const actions = document.querySelector(".home-account-actions");
+
+  if (actions && !actions.querySelector(".share-home")) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "share-home";
+    button.innerHTML = '<i class="ti ti-share" aria-hidden="true"></i> Share Chessnet';
+    button.onclick = share;
+    actions.appendChild(button);
+  }
+})();
+      </script>
 </body>
 </html>
