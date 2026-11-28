@@ -3345,7 +3345,8 @@ loadChessnetSettings();
   });
 
   // Always start at the clean homepage
-  showPage("home");
+    const saved = location.hash.slice(1);
+  showPage(document.getElementById(saved) ? saved : "home");
 })();
 
   </script>
@@ -4999,6 +5000,10 @@ main .home-shortcuts small{display:block}
 .hub-pop select{width:100%;padding:12px;margin:8px 0;border-radius:7px;background:#211136;color:#fff;border:1px solid #69318a}
 .hub-pop .btn{margin:6px 4px;display:inline-block;text-decoration:none}
 .section-title i{color:#f044ad;margin-right:6px}
+main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
+.main-nav a[href="#rankings"],.home-shortcut[href="#rankings"]{display:none!important}
+#chessnet-groups button.zed-toggle{width:100%;margin-top:12px;background:transparent;border:1px solid #f044ad;color:#fff}
+#zed-hub .passed{display:block;margin-top:3px;font-size:12px}
 </style>
 
 <script>
@@ -5016,10 +5021,43 @@ main .home-shortcuts small{display:block}
     if (h) h.innerHTML = '<i class="ti ti-' + item[1] + '" aria-hidden="true"></i>' + item[2];
   });
 
+  // ---------- REMOVE RANKINGS FROM MENU AND HOME ----------
+  document.querySelectorAll('.main-nav a[href="#rankings"], .home-shortcut[href="#rankings"]')
+    .forEach(link => link.remove());
+
   if (!section) return;
 
-  let role = null, tab = "rankings", perf = "rapid";
-  let members = [], statuses = {}, previous = {}, myLichess = "";
+  // ---------- HIDE CREATE / JOIN GROUP BEHIND BUTTONS ----------
+  [["create-group-btn", "plus", "Create group"], ["join-group-btn", "login", "Join group"]].forEach(item => {
+    const inner = document.getElementById(item[0]);
+    const panel = inner && inner.closest(".panel");
+    if (!panel) return;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "zed-toggle";
+    const label = open => toggle.innerHTML = '<i class="ti ti-' + item[1] + '"></i> ' +
+      item[2] + (open ? " ▴" : " ▾");
+    label(false);
+    panel.style.display = "none";
+    panel.insertAdjacentElement("beforebegin", toggle);
+    toggle.onclick = () => {
+      const open = panel.style.display === "none";
+      panel.style.display = open ? "block" : "none";
+      label(open);
+    };
+  });
+
+  // Remember choices after a refresh
+  const recall = (key, fallback) => {
+    try { return localStorage.getItem("zed_" + key) || fallback; } catch (e) { return fallback; }
+  };
+  const remember = (key, value) => {
+    try { localStorage.setItem("zed_" + key, value); } catch (e) {}
+  };
+
+  let role = null, tab = recall("tab", "rankings"), perf = recall("perf", "rapid");
+  let members = [], statuses = {}, history_ = {}, myLichess = "";
+  let isMember = false, session = null, run = 0;
   let loading = false, loadError = "", loadedAt = 0;
 
   const safe = v => String(v ?? "").replace(/[&<>"']/g, c =>
@@ -5033,28 +5071,64 @@ main .home-shortcuts small{display:block}
     return h;
   };
   const ndjson = text => text.split("\n").filter(l => l.trim()).map(l => JSON.parse(l));
-  const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lusaka" });
 
   // ---------- LAYOUT ----------
   const hub = document.createElement("div");
   hub.id = "zed-hub";
   hub.innerHTML =
-    '<button type="button" class="hub-open"><i class="ti ti-users"></i> ZED Chess of the Elites ▾</button>' +
-    '<div class="hub-box" style="display:none"><div class="hub-tabs" id="hub-main"></div><div id="hub-body"></div></div>';
+    '<p class="hub-msg" id="hub-access"></p>' +
+    '<div id="hub-private" style="display:none">' +
+    '<button type="button" class="hub-open"></button>' +
+    '<div class="hub-box"><div class="hub-tabs" id="hub-main"></div><div id="hub-body"></div></div></div>';
   const intro = section.querySelector(":scope > p.muted");
   intro.insertAdjacentElement("afterend", hub);
 
   const box = hub.querySelector(".hub-box");
   const body = hub.querySelector("#hub-body");
+  const opener = hub.querySelector(".hub-open");
 
-  hub.querySelector(".hub-open").onclick = () => {
-    const opening = box.style.display === "none";
-    box.style.display = opening ? "block" : "none";
-    if (opening) {
-      render();
-      if (Date.now() - loadedAt > 60000) load();
-    }
+  function showBox(open) {
+    box.style.display = open ? "block" : "none";
+    opener.innerHTML = '<i class="ti ti-users"></i> ZED Chess of the Elites ' + (open ? "▴" : "▾");
+    remember("open", open ? "yes" : "no");
+  }
+  showBox(recall("open", "yes") === "yes");
+
+  opener.onclick = () => {
+    showBox(box.style.display === "none");
+    if (box.style.display !== "none") render();
   };
+
+  // Tournaments page: shortcut to the create form (owner and admins only)
+  const tPage = document.getElementById("tournaments");
+  const shortcut = document.createElement("a");
+  shortcut.href = "#chessnet-groups";
+  shortcut.className = "btn";
+  shortcut.style.cssText = "display:none;text-align:center;text-decoration:none;margin:12px 0";
+  shortcut.innerHTML = '<i class="ti ti-plus"></i> Create tournament';
+  if (tPage) {
+    tPage.querySelector(".panel").insertAdjacentElement("afterend", shortcut);
+    tPage.querySelectorAll(".panel p.muted").forEach(p => {
+      if (p.textContent.startsWith("Formats:")) p.textContent = "Formats: Swiss and Arena.";
+    });
+  }
+  shortcut.addEventListener("click", () => {
+    tab = "tournaments";
+    remember("tab", tab);
+    remember("form", "yes");
+    showBox(true);
+    render();
+  });
+
+  // Only logged-in, connected team members see the team hub
+  function showAccess() {
+    hub.querySelector("#hub-private").style.display = isMember ? "block" : "none";
+    shortcut.style.display = isMember && role ? "block" : "none";
+    const note = hub.querySelector("#hub-access");
+    note.style.display = isMember ? "none" : "block";
+    note.textContent = loading ? "Checking your team..." :
+      loadError || "Log in and connect Lichess to see your team.";
+  }
 
   function tabButtons(el, list, current, pick) {
     el.innerHTML = "";
@@ -5069,26 +5143,30 @@ main .home-shortcuts small{display:block}
   }
 
   function render() {
+    showAccess();
+    if (!isMember) { body.innerHTML = ""; return; }
     const list = [["rankings", "Rankings"], ["tournaments", "Tournaments"]];
     if (role === "owner") list.push(["admins", "Admins"]);
+    // Wait for the role before rejecting a remembered Admins tab
     if (!list.some(i => i[0] === tab)) tab = "rankings";
-    tabButtons(hub.querySelector("#hub-main"), list, tab, v => { tab = v; render(); });
+    tabButtons(hub.querySelector("#hub-main"), list, tab, v => { tab = v; remember("tab", v); render(); });
     if (tab === "rankings") renderRankings();
-    else if (tab === "tournaments") renderTournaments();
+    else if (tab === "tournaments") {
+      // don't wipe a half-filled form
+      const typing = body.querySelector("#t-name");
+      if (!typing || !typing.value) renderTournaments();
+    }
     else renderAdmins();
   }
 
   async function loadRole() {
-    role = null;
-    if (db) {
-      const { data } = await db.auth.getSession();
-      if (data.session) {
-        const result = await db.from("chessnet_team_admins").select("role")
-          .eq("user_id", data.session.user.id).maybeSingle();
-        role = result.data ? result.data.role : null;
-      }
+    let found = null;
+    if (db && session) {
+      const result = await db.from("chessnet_team_admins").select("role")
+        .eq("user_id", session.user.id).maybeSingle();
+      found = result.data ? result.data.role : null;
     }
-    if (box.style.display !== "none") render();
+    role = found;
   }
 
   // ---------- LOAD TEAM ----------
@@ -5110,63 +5188,67 @@ main .home-shortcuts small{display:block}
       .sort((a, b) => b.perfs[type].rating - a.perfs[type].rating || a.id.localeCompare(b.id));
   }
 
-  async function loadHistory() {
-    previous = {};
+  // Owner/admin loads save new positions; the database works out who passed who
+  async function syncHistory() {
+    history_ = {};
     if (!db) return;
-    for (const type of ["rapid", "blitz", "bullet"]) {
-      const result = await db.from("chessnet_rank_snapshots").select("day, ranks")
-        .eq("perf", type).lt("day", today()).order("day", { ascending: false }).limit(1);
-      if (result.error) throw new Error("Rank history: " + result.error.message);
-      previous[type] = result.data[0] || null;
-    }
-  }
-
-  // First admin visit of the day saves that day's positions
-  async function saveHistory() {
-    if (!db || !role || !members.length) return;
-    for (const type of ["rapid", "blitz", "bullet"]) {
-      const ranks = {};
-      ranked(type).forEach((m, i) => ranks[m.id] = i + 1);
-      if (!Object.keys(ranks).length) continue;
-      const result = await db.from("chessnet_rank_snapshots")
-        .insert({ day: today(), perf: type, ranks: ranks });
-      // 23505 = already saved today
-      if (result.error && result.error.code !== "23505") {
-        console.error("Rank save:", result.error.message);
+    if (role) {
+      for (const type of ["rapid", "blitz", "bullet"]) {
+        const ranks = {}, names = {};
+        ranked(type).forEach((m, i) => { ranks[m.id] = i + 1; names[m.id] = m.username; });
+        if (!Object.keys(ranks).length) continue;
+        const result = await db.rpc("chessnet_update_ranks",
+          { p_perf: type, p_ranks: ranks, p_names: names });
+        if (result.error) throw new Error("Arrows: " + result.error.message);
       }
     }
+    const result = await db.from("chessnet_rank_state").select("perf, moves");
+    if (result.error) throw new Error("Arrows: " + result.error.message);
+    result.data.forEach(row => history_[row.perf] = row.moves);
   }
 
   async function load() {
     if (loading) return;
     loading = true;
     loadError = "";
+    const myRun = run;
     render();
     try {
+      session = db ? (await db.auth.getSession()).data.session : null;
+      if (!session) throw new Error("Log in to Chessnet to see your team.");
+      if (!token()) throw new Error("Go to Chess Accounts and tap Reconnect Lichess to see your team.");
+
+      const me = await fetch(API + "/api/account", { headers: headers() });
+      if (me.status === 401) throw new Error("Go to Chess Accounts and tap Reconnect Lichess.");
+      if (!me.ok) throw new Error("Lichess returned error " + me.status);
+      const myId = (await me.json()).id;
+
       const res = await fetch(API + "/api/team/" + TEAM + "/users?full=true",
         { headers: headers({ Accept: "application/x-ndjson" }) });
       if (res.status === 401 || res.status === 403) {
-        throw new Error("Permission needed. Go to Chess Accounts and tap Reconnect Lichess.");
+        throw new Error("This team is visible to its members only. Reconnect Lichess with a member account.");
       }
       if (!res.ok) throw new Error("Lichess returned error " + res.status);
-      members = ndjson(await res.text());
+      const list = ndjson(await res.text());
+      if (myRun !== run) throw new Error("stale");
+      if (!list.some(m => m.id === myId)) {
+        isMember = false;
+        members = [];
+        throw new Error("Your connected Lichess account is not in this team.");
+      }
+      members = list;
+      myLichess = myId;
+      isMember = true;
       loadedAt = Date.now();
 
       try { await loadStatuses(); } catch (e) { statuses = {}; loadError = e.message; }
-
-      myLichess = "";
-      if (token()) {
-        const me = await fetch(API + "/api/account", { headers: headers() });
-        if (me.ok) myLichess = (await me.json()).id;
-      }
-
       await loadRole();
-      await saveHistory();
-      await loadHistory();
+      await syncHistory();
     } catch (e) {
-      loadError = e.message;
+      if (e.message !== "stale") loadError = e.message;
     }
     loading = false;
+    if (myRun !== run) { load(); return; }
     render();
   }
 
@@ -5177,16 +5259,16 @@ main .home-shortcuts small{display:block}
       '<p class="hub-msg" id="hub-note"></p><div id="hub-list"></div>';
     tabButtons(body.querySelector("#hub-perf"),
       [["rapid", "Rapid"], ["blitz", "Blitz"], ["bullet", "Bullet"]], perf,
-      v => { perf = v; renderRankings(); });
+      v => { perf = v; remember("perf", v); renderRankings(); });
     body.querySelector("#hub-refresh").onclick = load;
 
     const note = body.querySelector("#hub-note");
     if (loading) { note.textContent = "Loading team..."; return; }
 
-    const old = previous[perf];
-    note.textContent = loadError || (old
-      ? "Arrows compare with positions saved on " + old.day + "."
-      : "No earlier positions saved yet. Arrows will appear later.");
+    const moves = history_[perf] || {};
+    note.textContent = loadError || (Object.keys(moves).length
+      ? "Arrows show each player's latest position change."
+      : "No overtakes recorded yet.");
 
     const players = ranked(perf);
     // Members without games in this category stay listed at the bottom
@@ -5194,14 +5276,23 @@ main .home-shortcuts small{display:block}
 
     body.querySelector("#hub-list").innerHTML = players.concat(unrated).map((m, i) => {
       const isRanked = i < players.length;
-      let move = "";
-      if (isRanked && old) {
-        const before = old.ranks[m.id];
-        const diff = before - (i + 1);
-        if (!before) move = '<div class="move same">NEW</div>';
-        else if (diff > 0) move = '<div class="move up"><i class="ti ti-arrow-up"></i>' + diff + "</div>";
-        else if (diff < 0) move = '<div class="move down"><i class="ti ti-arrow-down"></i>' + (-diff) + "</div>";
-        else move = '<div class="move same">—</div>';
+      let move = "", story = "";
+      const change = isRanked && moves[m.id];
+      if (change) {
+        const up = change.diff > 0, down = change.diff < 0;
+        const cls = up ? "up" : down ? "down" : "same";
+        move = '<div class="move ' + cls + '">' + (up || down
+          ? '<i class="ti ti-arrow-' + (up ? "up" : "down") + '"></i>' + Math.abs(change.diff)
+          : "↕") + "</div>";
+        const names = list => list.slice(0, 3).map(safe).join(", ") +
+          (list.length > 3 ? " +" + (list.length - 3) + " more" : "");
+        const when = safe(new Date(change.at).toLocaleDateString());
+        if (change.passed.length) {
+          story += '<span class="passed up">▲ Passed ' + names(change.passed) + " · " + when + "</span>";
+        }
+        if (change.passedBy.length) {
+          story += '<span class="passed down">▼ Passed by ' + names(change.passedBy) + " · " + when + "</span>";
+        }
       }
 
       const s = statuses[m.id] || {};
@@ -5220,7 +5311,7 @@ main .home-shortcuts small{display:block}
       return '<div class="hub-row"><div class="pos">' + (isRanked ? i + 1 : "–") + move + "</div>" +
         '<div class="who"><strong>' + safe(m.username) + "</strong><small>" +
         (isRanked ? m.perfs[perf].rating + (m.perfs[perf].prov ? "?" : "") : "No " + perf + " games") +
-        ' · <span style="color:' + color + '">' + state + "</span></small></div>" +
+        ' · <span style="color:' + color + '">' + state + "</span></small>" + story + "</div>" +
         '<div class="acts">' + actions + "</div></div>";
     }).join("");
 
@@ -5234,6 +5325,12 @@ main .home-shortcuts small{display:block}
     if (document.hidden || loading || !members.length || tab !== "rankings" ||
         box.style.display === "none" || !section.classList.contains("page-active")) return;
     try { await loadStatuses(); renderRankings(); } catch (e) {}
+  }, 30000);
+
+  // Reload ratings every 3 minutes while the leaderboard is open
+  setInterval(() => {
+    if (!document.hidden && isMember && tab === "rankings" && box.style.display !== "none" &&
+        section.classList.contains("page-active") && Date.now() - loadedAt > 180000) load();
   }, 30000);
 
   // ---------- CHALLENGE ----------
@@ -5338,28 +5435,45 @@ main .home-shortcuts small{display:block}
   function renderTournaments() {
     let form = '<p class="hub-msg">Only the owner and admins can create tournaments here.</p>';
     if (role) {
-      form = '<h3>Create tournament</h3>' +
-        '<label>Type</label><select id="t-type"><option value="swiss">Swiss</option><option value="arena">Arena</option></select>' +
+      const open = recall("form", "no") === "yes";
+      form = '<button type="button" id="t-toggle"><i class="ti ti-plus"></i> Create tournament</button>' +
+        '<div id="t-form" style="display:' + (open ? "block" : "none") + '">' +
+        '<label>Type</label><select id="t-type"><option value="arena">Arena</option><option value="swiss">Swiss</option></select>' +
         '<label>Name</label><input id="t-name" maxlength="30" placeholder="ZED Friday Chess">' +
-        '<label>Time control</label><select id="t-time"><option value="60,0">1+0</option><option value="180,2">3+2</option>' +
-        '<option value="300,0" selected>5+0</option><option value="600,0">10+0</option><option value="900,10">15+10</option></select>' +
-        '<div id="t-swiss"><label>Rounds</label><select id="t-rounds"><option>3</option><option selected>5</option><option>7</option><option>9</option></select></div>' +
-        '<div id="t-arena" style="display:none"><label>Duration (minutes)</label><select id="t-minutes"><option>30</option><option selected>60</option><option>90</option><option>120</option></select></div>' +
+        '<label>Time control</label><select id="t-time">' +
+        '<optgroup label="Bullet"><option value="60,0">1+0</option><option value="120,1">2+1</option></optgroup>' +
+        '<optgroup label="Blitz"><option value="180,0">3+0</option><option value="180,2">3+2</option><option value="300,0" selected>5+0</option><option value="300,3">5+3</option></optgroup>' +
+        '<optgroup label="Rapid"><option value="600,0">10+0</option><option value="600,5">10+5</option><option value="900,10">15+10</option></optgroup></select>' +
+        '<div id="t-who-box"><label>Who can join</label><select id="t-who"><option value="team">ZEDCHESS members only</option><option value="link">Open: anyone with the link</option></select></div>' +
+        '<p class="hub-msg" id="t-who-note"></p>' +
+        '<div id="t-swiss" style="display:none"><label>Rounds</label><select id="t-rounds"><option>3</option><option selected>5</option><option>7</option><option>9</option></select></div>' +
+        '<div id="t-arena"><label>Duration (minutes)</label><select id="t-minutes"><option>30</option><option selected>60</option><option>90</option><option>120</option></select></div>' +
         '<label>Start date and time</label><input id="t-start" type="datetime-local">' +
         '<label>Rating</label><select id="t-rated"><option value="true">Rated</option><option value="false">Casual</option></select>' +
-        '<button type="button" id="t-create">Create on Lichess</button><p class="hub-msg" id="t-msg"></p>';
+        '<button type="button" id="t-create">Create on Lichess</button></div>' +
+        '<p class="hub-msg" id="t-msg"></p><div id="t-share"></div>';
     }
     body.innerHTML = form + '<h3 style="margin-top:16px">Team tournaments</h3><div id="t-list" class="hub-msg">Loading...</div>';
 
     if (role) {
       const $ = s => body.querySelector(s);
+      $("#t-toggle").onclick = () => {
+        const open = $("#t-form").style.display === "none";
+        $("#t-form").style.display = open ? "block" : "none";
+        remember("form", open ? "yes" : "no");
+      };
       $("#t-type").onchange = e => {
-        $("#t-swiss").style.display = e.target.value === "swiss" ? "block" : "none";
-        $("#t-arena").style.display = e.target.value === "arena" ? "block" : "none";
+        const swiss = e.target.value === "swiss";
+        $("#t-swiss").style.display = swiss ? "block" : "none";
+        $("#t-arena").style.display = swiss ? "none" : "block";
+        $("#t-who-box").style.display = swiss ? "none" : "block";
+        $("#t-who-note").textContent = swiss
+          ? "Swiss is for ZEDCHESS team members. For outside players, choose Arena." : "";
       };
       $("#t-create").onclick = async () => {
         const button = $("#t-create"), msg = $("#t-msg");
         const type = $("#t-type").value;
+        const anyone = type === "arena" && $("#t-who").value === "link";
         const name = $("#t-name").value.trim();
         const start = new Date($("#t-start").value).getTime();
         const time = $("#t-time").value.split(",").map(Number);
@@ -5372,8 +5486,8 @@ main .home-shortcuts small{display:block}
           ? { name: name, "clock.limit": time[0], "clock.increment": time[1],
               nbRounds: $("#t-rounds").value, startsAt: start, rated: $("#t-rated").value }
           : { name: name, clockTime: time[0] / 60, clockIncrement: time[1],
-              minutes: $("#t-minutes").value, startDate: start, rated: $("#t-rated").value,
-              "conditions.teamMember.teamId": TEAM };
+              minutes: $("#t-minutes").value, startDate: start, rated: $("#t-rated").value };
+        if (type === "arena" && !anyone) data["conditions.teamMember.teamId"] = TEAM;
 
         button.disabled = true;
         msg.textContent = "Creating...";
@@ -5381,8 +5495,18 @@ main .home-shortcuts small{display:block}
           const res = await fetch(API + (type === "swiss" ? "/api/swiss/new/" + TEAM : "/api/tournament"),
             { method: "POST", headers: headers(), body: new URLSearchParams(data) });
           if (!res.ok) throw new Error(await errorText(res));
+          const made = await res.json();
+          const link = API + (type === "swiss" ? "/swiss/" : "/tournament/") + encodeURIComponent(made.id);
           msg.textContent = "Tournament created!";
           $("#t-name").value = "";
+          $("#t-share").innerHTML = shareButtons(link);
+          bindShare($("#t-share"));
+          const saved = await db.from("chessnet_tournaments").insert({
+            id: made.id, kind: type, name: name,
+            starts_at: new Date(start).toISOString(), open_to_all: anyone
+          });
+          if (saved.error) msg.textContent = "Created on Lichess, but not saved in Chessnet: " +
+            saved.error.message + " Copy the link now. Don't create it again.";
           listTournaments();
         } catch (e) {
           msg.textContent = e.message;
@@ -5393,26 +5517,57 @@ main .home-shortcuts small{display:block}
     listTournaments();
   }
 
+  const shareButtons = link =>
+    '<div class="hub-tabs"><a class="hub-btn" target="_blank" rel="noopener" href="' + link + '">Open</a>' +
+    '<button type="button" class="off" data-copy="' + link + '">Copy link</button></div>';
+
+  function bindShare(el) {
+    el.querySelectorAll("[data-copy]").forEach(b => {
+      b.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(b.dataset.copy);
+          b.textContent = "Copied!";
+        } catch (e) {
+          prompt("Copy this link:", b.dataset.copy);
+        }
+      };
+    });
+  }
+
   async function listTournaments() {
     const el = body.querySelector("#t-list");
     if (!el) return;
-    try {
-      const results = await Promise.all(["swiss", "arena"].map(async type => {
+    const found = new Map();
+    let problem = "";
+
+    // Tournaments created in Chessnet (includes open arenas)
+    const saved = await db.from("chessnet_tournaments").select("*")
+      .order("starts_at", { ascending: false }).limit(20);
+    if (saved.error) problem = "Saved tournaments: " + saved.error.message;
+    else saved.data.forEach(t => found.set(t.id,
+      { id: t.id, kind: t.kind, name: t.name, startsAt: t.starts_at, open: t.open_to_all }));
+
+    // Tournaments Lichess lists under the team
+    for (const type of ["swiss", "arena"]) {
+      try {
         const res = await fetch(API + "/api/team/" + TEAM + "/" + type + "?max=10",
           { headers: headers({ Accept: "application/x-ndjson" }) });
-        if (!res.ok) throw new Error("Could not load tournaments (" + res.status + ").");
-        return ndjson(await res.text()).map(t => Object.assign(t, { kind: type }));
-      }));
-      const all = results.flat().sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
-      el.innerHTML = all.length ? all.map(t =>
-        '<div class="hub-row"><div class="who"><strong>' + safe(t.fullName || t.name) + "</strong><small>" +
-        (t.kind === "swiss" ? "Swiss" : "Arena") + " · " + safe(new Date(t.startsAt).toLocaleString()) +
-        '</small></div><a class="hub-btn" target="_blank" rel="noopener" href="' + API +
-        (t.kind === "swiss" ? "/swiss/" : "/tournament/") + encodeURIComponent(t.id) + '">Open</a></div>'
-      ).join("") : "No team tournaments yet.";
-    } catch (e) {
-      el.textContent = e.message;
+        if (!res.ok) throw new Error("Could not load " + type + " list (" + res.status + ").");
+        ndjson(await res.text()).forEach(t => {
+          if (!found.has(t.id)) found.set(t.id,
+            { id: t.id, kind: type, name: t.fullName || t.name, startsAt: t.startsAt });
+        });
+      } catch (e) { problem = e.message; }
     }
+
+    const all = [...found.values()].sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
+    el.innerHTML = (problem ? "<p>" + safe(problem) + "</p>" : "") + (all.length ? all.map(t => {
+      const link = API + (t.kind === "swiss" ? "/swiss/" : "/tournament/") + encodeURIComponent(t.id);
+      return '<div class="hub-row"><div class="who"><strong>' + safe(t.name) + "</strong><small>" +
+        (t.kind === "swiss" ? "Swiss" : "Arena") + (t.open ? " · Open" : "") + " · " +
+        safe(new Date(t.startsAt).toLocaleString()) + "</small>" + shareButtons(link) + "</div></div>";
+    }).join("") : "No tournaments yet.");
+    bindShare(el);
   }
 
   // ---------- ADMINS (owner only) ----------
@@ -5431,12 +5586,31 @@ main .home-shortcuts small{display:block}
     body.querySelector("#a-remove").onclick = () => set(false);
   }
 
-  // Update admin access after login or logout
-  if (db) db.auth.onAuthStateChange(event => {
-    if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
-      setTimeout(loadRole, 0);
-    }
+  // Check access again after login or logout
+  let lastUser;
+  if (db) db.auth.onAuthStateChange((event, current) => {
+    const user = current ? current.user.id : null;
+    if (user === lastUser) return;
+    lastUser = user;
+    run++;
+    isMember = false;
+    role = null;
+    members = [];
+    loadedAt = 0;
+    setTimeout(() => { showAccess(); load(); }, 0);
   });
+
+  // Refresh the team when Groups is opened
+  new MutationObserver(() => {
+    const active = section.classList.contains("page-active");
+    if (active && Date.now() - loadedAt > 60000) load();
+  }).observe(section, { attributes: true, attributeFilter: ["class"] });
+
+  showAccess();
+  if (location.hash === "#rankings") {
+    const groups = document.querySelector('a[href="#chessnet-groups"]');
+    if (groups) groups.click();
+  }
 })();
 </script>
 <!-- ===== CHESSNET TEAM HUB END ===== -->
