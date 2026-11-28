@@ -4977,30 +4977,33 @@ main .home-shortcuts small{display:block}
   });
 })();
 </script>
-  <!-- ===== CHESSNET TEAM HUB START ===== -->
+<!-- ===== CHESSNET TEAM HUB START ===== -->
 <style>
-#zed-hub .hub-box{background:#1b1232;border:1px solid #492467;border-radius:14px;padding:14px;margin-top:12px}
-#zed-hub .hub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-#chessnet-groups #zed-hub button,#chessnet-groups #zed-hub .hub-btn{background:linear-gradient(120deg,#f044ad,#922de2);color:#fff;border:1px solid #f044ad;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:bold;text-decoration:none;cursor:pointer;display:inline-block}
-#chessnet-groups #zed-hub button.off{background:transparent;color:#cbb5ff}
-#chessnet-groups #zed-hub button.hub-open{width:100%;padding:16px;font-size:16px;margin-top:15px}
-#zed-hub select{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #69318a;background:#211136;color:#fff}
-#zed-hub label{display:block;font-size:13px;color:#cbb5ff;margin-top:8px}
-#zed-hub .hub-row{display:flex;align-items:center;gap:8px;background:#211136;border:1px solid #492467;border-radius:12px;padding:10px;margin-bottom:8px}
-#zed-hub .pos{width:38px;text-align:center;flex-shrink:0;font-weight:bold}
-#zed-hub .move{font-size:12px;margin-top:3px;white-space:nowrap}
-#zed-hub .up{color:#55dfa0}#zed-hub .down{color:#ff737d}#zed-hub .same{color:#9e89c1}
-#zed-hub .who{flex:1;min-width:0;overflow-wrap:anywhere}
-#zed-hub .who small{display:block;color:#cbb5ff;margin-top:3px}
-#zed-hub .acts{display:flex;flex-direction:column;gap:5px}
-#zed-hub .acts>*{text-align:center}
-#zed-hub .hub-msg{font-size:13px;color:#cbb5ff;margin:8px 0;line-height:1.5}
+#zed-hub .hub-box,#zed-free .hub-box{background:#1b1232;border:1px solid #492467;border-radius:14px;padding:14px;margin-top:12px}
+#zed-hub .hub-tabs,#zed-free .hub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#chessnet-groups #zed-hub button,#tournaments #zed-free button,#chessnet-groups #zed-hub .hub-btn,#tournaments #zed-free .hub-btn{background:linear-gradient(120deg,#f044ad,#922de2);color:#fff;border:1px solid #f044ad;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:bold;text-decoration:none;cursor:pointer;display:inline-block}
+#chessnet-groups #zed-hub button.off,#tournaments #zed-free button.off{background:transparent;color:#cbb5ff}
+#chessnet-groups #zed-hub button.hub-open,#tournaments #zed-free button.hub-open{width:100%;padding:16px;font-size:16px;margin-top:15px}
+#zed-hub select,#zed-free select{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #69318a;background:#211136;color:#fff}
+#zed-hub label,#zed-free label{display:block;font-size:13px;color:#cbb5ff;margin-top:8px}
+#zed-hub .hub-row,#zed-free .hub-row{display:flex;align-items:center;gap:8px;background:#211136;border:1px solid #492467;border-radius:12px;padding:10px;margin-bottom:8px}
+#zed-hub .pos,#zed-free .pos{width:38px;text-align:center;flex-shrink:0;font-weight:bold}
+#zed-hub .move,#zed-free .move{font-size:12px;margin-top:3px;white-space:nowrap}
+#zed-hub .up,#zed-free .up{color:#55dfa0}#zed-hub .down,#zed-free .down{color:#ff737d}#zed-hub .same,#zed-free .same{color:#9e89c1}
+#zed-hub .who,#zed-free .who{flex:1;min-width:0;overflow-wrap:anywhere}
+#zed-hub .who small,#zed-free .who small{display:block;color:#cbb5ff;margin-top:3px}
+#zed-hub .acts,#zed-free .acts{display:flex;flex-direction:column;gap:5px}
+#zed-hub .acts>*,#zed-free .acts>*{text-align:center}
+#zed-hub .hub-msg,#zed-free .hub-msg{font-size:13px;color:#cbb5ff;margin:8px 0;line-height:1.5}
 .hub-pop{position:fixed;inset:0;z-index:3600;background:rgba(5,0,20,.85);display:flex;align-items:center;justify-content:center;padding:20px}
 .hub-pop>div{width:100%;max-width:340px;background:#1b1232;border:2px solid #922de2;border-radius:16px;padding:20px;text-align:center}
 .hub-pop select{width:100%;padding:12px;margin:8px 0;border-radius:7px;background:#211136;color:#fff;border:1px solid #69318a}
 .hub-pop .btn{margin:6px 4px;display:inline-block;text-decoration:none}
 .section-title i{color:#f044ad;margin-right:6px}
-main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
+#zed-free input{width:100%;box-sizing:border-box;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #69318a;background:#211136;color:#fff}
+.main-nav{justify-content:space-between}
+@media(max-width:420px){.main-nav{gap:10px!important}}
+#zed-hub .elo{font-size:12px;font-weight:bold;white-space:nowrap}
 .main-nav a[href="#rankings"],.home-shortcut[href="#rankings"]{display:none!important}
 #chessnet-groups button.zed-toggle{width:100%;margin-top:12px;background:transparent;border:1px solid #f044ad;color:#fff}
 #zed-hub .passed{display:block;margin-top:3px;font-size:12px}
@@ -5024,6 +5027,20 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
   // ---------- REMOVE RANKINGS FROM MENU AND HOME ----------
   document.querySelectorAll('.main-nav a[href="#rankings"], .home-shortcut[href="#rankings"]')
     .forEach(link => link.remove());
+
+  // ---------- MY PROFILE ON HOME AND MENU ----------
+  const nav = document.querySelector(".main-nav");
+  if (nav && !nav.querySelector('a[href="#player-profile"]')) {
+    nav.insertAdjacentHTML("beforeend",
+      '<a href="#player-profile"><span><i class="ti ti-user" aria-hidden="true"></i></span> Profile</a>');
+  }
+  const cards = document.querySelector(".home-shortcuts");
+  if (cards && !cards.querySelector('a[href="#player-profile"]')) {
+    cards.insertAdjacentHTML("beforeend",
+      '<a href="#player-profile" class="home-shortcut">' +
+      '<span class="shortcut-icon"><i class="ti ti-user" aria-hidden="true"></i></span>' +
+      '<span><strong>My Profile</strong><small>Ratings and analysis</small></span></a>');
+  }
 
   if (!section) return;
 
@@ -5099,31 +5116,34 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     if (box.style.display !== "none") render();
   };
 
-  // Tournaments page: shortcut to the create form (owner and admins only)
+  // Tournaments page: free tournaments for any logged-in user
   const tPage = document.getElementById("tournaments");
-  const shortcut = document.createElement("a");
-  shortcut.href = "#chessnet-groups";
-  shortcut.className = "btn";
-  shortcut.style.cssText = "display:none;text-align:center;text-decoration:none;margin:12px 0";
-  shortcut.innerHTML = '<i class="ti ti-plus"></i> Create tournament';
+  const free = document.createElement("div");
+  free.id = "zed-free";
+  free.className = "panel";
+  free.style.marginTop = "12px";
   if (tPage) {
-    tPage.querySelector(".panel").insertAdjacentElement("afterend", shortcut);
+    tPage.querySelector(".panel").insertAdjacentElement("afterend", free);
     tPage.querySelectorAll(".panel p.muted").forEach(p => {
-      if (p.textContent.startsWith("Formats:")) p.textContent = "Formats: Swiss and Arena.";
+      if (p.textContent.startsWith("Formats:")) p.textContent = "Free tournaments are open Arenas.";
     });
   }
-  shortcut.addEventListener("click", () => {
-    tab = "tournaments";
-    remember("tab", tab);
-    remember("form", "yes");
-    showBox(true);
-    render();
-  });
+
+  async function renderFree(force) {
+    if (!tPage) return;
+    const typing = free.querySelector("#t-name");
+    if (!force && typing && typing.value) return;
+    const user = db ? (await db.auth.getSession()).data.session : null;
+    if (!user) {
+      free.innerHTML = '<p class="hub-msg">Log in to Chessnet to see and create free tournaments.</p>';
+      return;
+    }
+    tournamentPanel(free, "free");
+  }
 
   // Only logged-in, connected team members see the team hub
   function showAccess() {
     hub.querySelector("#hub-private").style.display = isMember ? "block" : "none";
-    shortcut.style.display = isMember && role ? "block" : "none";
     const note = hub.querySelector("#hub-access");
     note.style.display = isMember ? "none" : "block";
     note.textContent = loading ? "Checking your team..." :
@@ -5164,6 +5184,7 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     if (db && session) {
       const result = await db.from("chessnet_team_admins").select("role")
         .eq("user_id", session.user.id).maybeSingle();
+      if (result.error) loadError = "Admin check failed: " + result.error.message;
       found = result.data ? result.data.role : null;
     }
     role = found;
@@ -5188,22 +5209,31 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
       .sort((a, b) => b.perfs[type].rating - a.perfs[type].rating || a.id.localeCompare(b.id));
   }
 
-  // Owner/admin loads save new positions; the database works out who passed who
+  // Owner/admin loads save new positions; the database records the movements
   async function syncHistory() {
     history_ = {};
     if (!db) return;
     if (role) {
       for (const type of ["rapid", "blitz", "bullet"]) {
-        const ranks = {}, names = {};
-        ranked(type).forEach((m, i) => { ranks[m.id] = i + 1; names[m.id] = m.username; });
+        const ranks = {}, names = {}, ratings = {};
+        ranked(type).forEach((m, i) => {
+          ranks[m.id] = i + 1;
+          names[m.id] = m.username;
+          ratings[m.id] = m.perfs[type].rating;
+        });
         if (!Object.keys(ranks).length) continue;
-        const result = await db.rpc("chessnet_update_ranks",
-          { p_perf: type, p_ranks: ranks, p_names: names });
+        const result = await db.rpc("chessnet_save_ranks",
+          { p_perf: type, p_ranks: ranks, p_names: names, p_ratings: ratings });
         if (result.error) throw new Error("Arrows: " + result.error.message);
       }
     }
-    const result = await db.from("chessnet_rank_state").select("perf, moves");
+    await readHistory();
+  }
+
+  async function readHistory() {
+    const result = await db.from("chessnet_rank_state").select("perf, moves, updated_at");
     if (result.error) throw new Error("Arrows: " + result.error.message);
+    history_ = {};
     result.data.forEach(row => history_[row.perf] = row.moves);
   }
 
@@ -5265,10 +5295,14 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     const note = body.querySelector("#hub-note");
     if (loading) { note.textContent = "Loading team..."; return; }
 
-    const moves = history_[perf] || {};
+    // Anything older than 24 hours is neutral
+    const moves = {};
+    Object.entries(history_[perf] || {}).forEach(([id, m]) => {
+      if (Date.now() - new Date(m.at).getTime() < 86400000) moves[id] = m;
+    });
     note.textContent = loadError || (Object.keys(moves).length
-      ? "Arrows show each player's latest position change."
-      : "No overtakes recorded yet.");
+      ? "Movements from the last 24 hours."
+      : "No new movements in the last 24 hours.");
 
     const players = ranked(perf);
     // Members without games in this category stay listed at the bottom
@@ -5276,22 +5310,28 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
 
     body.querySelector("#hub-list").innerHTML = players.concat(unrated).map((m, i) => {
       const isRanked = i < players.length;
-      let move = "", story = "";
+      let move = "", story = "", elo = "";
       const change = isRanked && moves[m.id];
+      if (isRanked) move = '<div class="move same">—</div>';
       if (change) {
-        const up = change.diff > 0, down = change.diff < 0;
-        const cls = up ? "up" : down ? "down" : "same";
-        move = '<div class="move ' + cls + '">' + (up || down
-          ? '<i class="ti ti-arrow-' + (up ? "up" : "down") + '"></i>' + Math.abs(change.diff)
-          : "↕") + "</div>";
+        if (change.diff) {
+          move = '<div class="move ' + (change.diff > 0 ? "up" : "down") + '"><i class="ti ti-arrow-' +
+            (change.diff > 0 ? "up" : "down") + '"></i>' + Math.abs(change.diff) + "</div>";
+        }
+        if (change.elo) {
+          elo = ' <span class="elo ' + (change.elo > 0 ? "up" : "down") + '">' +
+            (change.elo > 0 ? "+" : "") + Number(change.elo) + " Elo</span>";
+        }
         const names = list => list.slice(0, 3).map(safe).join(", ") +
           (list.length > 3 ? " +" + (list.length - 3) + " more" : "");
-        const when = safe(new Date(change.at).toLocaleDateString());
+        if (change.from !== change.to) {
+          story += '<span class="passed">Moved #' + Number(change.from) + " → #" + Number(change.to) + "</span>";
+        }
         if (change.passed.length) {
-          story += '<span class="passed up">▲ Passed ' + names(change.passed) + " · " + when + "</span>";
+          story += '<span class="passed up">▲ Passed ' + names(change.passed) + "</span>";
         }
         if (change.passedBy.length) {
-          story += '<span class="passed down">▼ Passed by ' + names(change.passedBy) + " · " + when + "</span>";
+          story += '<span class="passed down">▼ Passed by ' + names(change.passedBy) + "</span>";
         }
       }
 
@@ -5301,15 +5341,15 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
       const profile = API + "/@/" + encodeURIComponent(m.username);
 
       let actions = '<a class="hub-btn" target="_blank" rel="noopener" href="' + profile + '">View</a>';
-      if (s.playing && s.playingId) {
-        actions = '<a class="hub-btn" target="_blank" rel="noopener" href="' + API + "/" +
-          encodeURIComponent(s.playingId) + '">Watch</a>';
+      if (s.playing) {
+        const watch = s.playingId ? API + "/" + encodeURIComponent(s.playingId) : profile + "/tv";
+        actions = '<a class="hub-btn" target="_blank" rel="noopener" href="' + watch + '">Watch</a>' + actions;
       } else if (s.online && !s.playing && m.id !== myLichess) {
         actions = '<button type="button" data-challenge="' + safe(m.username) + '">Challenge</button>' + actions;
       }
 
       return '<div class="hub-row"><div class="pos">' + (isRanked ? i + 1 : "–") + move + "</div>" +
-        '<div class="who"><strong>' + safe(m.username) + "</strong><small>" +
+        '<div class="who"><strong>' + safe(m.username) + "</strong>" + elo + "<small>" +
         (isRanked ? m.perfs[perf].rating + (m.perfs[perf].prov ? "?" : "") : "No " + perf + " games") +
         ' · <span style="color:' + color + '">' + state + "</span></small>" + story + "</div>" +
         '<div class="acts">' + actions + "</div></div>";
@@ -5324,7 +5364,7 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
   setInterval(async () => {
     if (document.hidden || loading || !members.length || tab !== "rankings" ||
         box.style.display === "none" || !section.classList.contains("page-active")) return;
-    try { await loadStatuses(); renderRankings(); } catch (e) {}
+    try { await loadStatuses(); await readHistory(); renderRankings(); } catch (e) {}
   }, 30000);
 
   // Reload ratings every 3 minutes while the leaderboard is open
@@ -5433,19 +5473,25 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
 
   // ---------- TOURNAMENTS ----------
   function renderTournaments() {
-    let form = '<p class="hub-msg">Only the owner and admins can create tournaments here.</p>';
-    if (role) {
-      const open = recall("form", "no") === "yes";
-      form = '<button type="button" id="t-toggle"><i class="ti ti-plus"></i> Create tournament</button>' +
+    tournamentPanel(body, "group");
+  }
+
+  function tournamentPanel(el, mode) {
+    const isFree = mode === "free";
+    const canCreate = isFree || !!role;
+    let form = '<p class="hub-msg">Only the owner and admins can create group tournaments.</p>';
+    if (canCreate) {
+      const open = recall("form_" + mode, "no") === "yes";
+      form = '<button type="button" id="t-toggle"><i class="ti ti-plus"></i> Create ' +
+        (isFree ? "free" : "group") + " tournament</button>" +
         '<div id="t-form" style="display:' + (open ? "block" : "none") + '">' +
-        '<label>Type</label><select id="t-type"><option value="arena">Arena</option><option value="swiss">Swiss</option></select>' +
-        '<label>Name</label><input id="t-name" maxlength="30" placeholder="ZED Friday Chess">' +
+        (isFree ? '<p class="hub-msg">Open Arena: anyone with the link can join using a Lichess account.</p>'
+          : '<label>Type</label><select id="t-type"><option value="arena">Arena</option><option value="swiss">Swiss</option></select>') +
+        '<label>Name</label><input id="t-name" maxlength="30" placeholder="Friday Chess">' +
         '<label>Time control</label><select id="t-time">' +
         '<optgroup label="Bullet"><option value="60,0">1+0</option><option value="120,1">2+1</option></optgroup>' +
         '<optgroup label="Blitz"><option value="180,0">3+0</option><option value="180,2">3+2</option><option value="300,0" selected>5+0</option><option value="300,3">5+3</option></optgroup>' +
         '<optgroup label="Rapid"><option value="600,0">10+0</option><option value="600,5">10+5</option><option value="900,10">15+10</option></optgroup></select>' +
-        '<div id="t-who-box"><label>Who can join</label><select id="t-who"><option value="team">ZEDCHESS members only</option><option value="link">Open: anyone with the link</option></select></div>' +
-        '<p class="hub-msg" id="t-who-note"></p>' +
         '<div id="t-swiss" style="display:none"><label>Rounds</label><select id="t-rounds"><option>3</option><option selected>5</option><option>7</option><option>9</option></select></div>' +
         '<div id="t-arena"><label>Duration (minutes)</label><select id="t-minutes"><option>30</option><option selected>60</option><option>90</option><option>120</option></select></div>' +
         '<label>Start date and time</label><input id="t-start" type="datetime-local">' +
@@ -5453,33 +5499,30 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
         '<button type="button" id="t-create">Create on Lichess</button></div>' +
         '<p class="hub-msg" id="t-msg"></p><div id="t-share"></div>';
     }
-    body.innerHTML = form + '<h3 style="margin-top:16px">Team tournaments</h3><div id="t-list" class="hub-msg">Loading...</div>';
+    el.innerHTML = form + '<h3 style="margin-top:16px">' + (isFree ? "Free" : "Team") +
+      ' tournaments</h3><div id="t-list" class="hub-msg">Loading...</div>';
 
-    if (role) {
-      const $ = s => body.querySelector(s);
+    if (canCreate) {
+      const $ = q => el.querySelector(q);
       $("#t-toggle").onclick = () => {
         const open = $("#t-form").style.display === "none";
         $("#t-form").style.display = open ? "block" : "none";
-        remember("form", open ? "yes" : "no");
+        remember("form_" + mode, open ? "yes" : "no");
       };
-      $("#t-type").onchange = e => {
+      if (!isFree) $("#t-type").onchange = e => {
         const swiss = e.target.value === "swiss";
         $("#t-swiss").style.display = swiss ? "block" : "none";
         $("#t-arena").style.display = swiss ? "none" : "block";
-        $("#t-who-box").style.display = swiss ? "none" : "block";
-        $("#t-who-note").textContent = swiss
-          ? "Swiss is for ZEDCHESS team members. For outside players, choose Arena." : "";
       };
       $("#t-create").onclick = async () => {
         const button = $("#t-create"), msg = $("#t-msg");
-        const type = $("#t-type").value;
-        const anyone = type === "arena" && $("#t-who").value === "link";
+        const type = isFree ? "arena" : $("#t-type").value;
         const name = $("#t-name").value.trim();
         const start = new Date($("#t-start").value).getTime();
         const time = $("#t-time").value.split(",").map(Number);
         if (name.length < 2) { msg.textContent = "Enter a tournament name."; return; }
         if (!start || start < Date.now() + 120000) { msg.textContent = "Choose a start time at least 2 minutes from now."; return; }
-        if (!token()) { msg.textContent = "Reconnect Lichess first."; return; }
+        if (!token()) { msg.textContent = "Go to Chess Accounts and connect Lichess first."; return; }
         if (!confirm("Create this " + type + " tournament on Lichess?")) return;
 
         const data = type === "swiss"
@@ -5487,7 +5530,7 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
               nbRounds: $("#t-rounds").value, startsAt: start, rated: $("#t-rated").value }
           : { name: name, clockTime: time[0] / 60, clockIncrement: time[1],
               minutes: $("#t-minutes").value, startDate: start, rated: $("#t-rated").value };
-        if (type === "arena" && !anyone) data["conditions.teamMember.teamId"] = TEAM;
+        if (type === "arena" && !isFree) data["conditions.teamMember.teamId"] = TEAM;
 
         button.disabled = true;
         msg.textContent = "Creating...";
@@ -5503,18 +5546,18 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
           bindShare($("#t-share"));
           const saved = await db.from("chessnet_tournaments").insert({
             id: made.id, kind: type, name: name,
-            starts_at: new Date(start).toISOString(), open_to_all: anyone
+            starts_at: new Date(start).toISOString(), open_to_all: isFree
           });
           if (saved.error) msg.textContent = "Created on Lichess, but not saved in Chessnet: " +
             saved.error.message + " Copy the link now. Don't create it again.";
-          listTournaments();
+          listTournaments(el, mode);
         } catch (e) {
           msg.textContent = e.message;
         }
         button.disabled = false;
       };
     }
-    listTournaments();
+    listTournaments(el, mode);
   }
 
   const shareButtons = link =>
@@ -5534,21 +5577,22 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     });
   }
 
-  async function listTournaments() {
-    const el = body.querySelector("#t-list");
+  async function listTournaments(root, mode) {
+    const el = root.querySelector("#t-list");
     if (!el) return;
     const found = new Map();
     let problem = "";
 
     // Tournaments created in Chessnet (includes open arenas)
     const saved = await db.from("chessnet_tournaments").select("*")
+      .eq("open_to_all", mode === "free")
       .order("starts_at", { ascending: false }).limit(20);
     if (saved.error) problem = "Saved tournaments: " + saved.error.message;
     else saved.data.forEach(t => found.set(t.id,
       { id: t.id, kind: t.kind, name: t.name, startsAt: t.starts_at, open: t.open_to_all }));
 
     // Tournaments Lichess lists under the team
-    for (const type of ["swiss", "arena"]) {
+    for (const type of mode === "free" ? [] : ["swiss", "arena"]) {
       try {
         const res = await fetch(API + "/api/team/" + TEAM + "/" + type + "?max=10",
           { headers: headers({ Accept: "application/x-ndjson" }) });
@@ -5597,7 +5641,7 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     role = null;
     members = [];
     loadedAt = 0;
-    setTimeout(() => { showAccess(); load(); }, 0);
+    setTimeout(() => { showAccess(); load(); renderFree(true); }, 0);
   });
 
   // Refresh the team when Groups is opened
@@ -5606,7 +5650,12 @@ main .home-shortcuts .home-shortcut[href="#chessnet-groups"]{grid-column:1/-1}
     if (active && Date.now() - loadedAt > 60000) load();
   }).observe(section, { attributes: true, attributeFilter: ["class"] });
 
+  if (tPage) new MutationObserver(() => {
+    if (tPage.classList.contains("page-active")) renderFree();
+  }).observe(tPage, { attributes: true, attributeFilter: ["class"] });
+
   showAccess();
+  renderFree();
   if (location.hash === "#rankings") {
     const groups = document.querySelector('a[href="#chessnet-groups"]');
     if (groups) groups.click();
